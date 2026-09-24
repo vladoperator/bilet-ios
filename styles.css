@@ -1,0 +1,2476 @@
+/* ==========================================================================
+   APPLE MESSAGES (iMessage) 1:1 PIXEL-PERFECT DESIGN SYSTEM & STYLES
+   macOS Sequoia & iOS 18 Human Interface Guidelines
+   ========================================================================== */
+
+:root {
+  /* Common Apple System Metrics */
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Inter", "Helvetica Neue", sans-serif;
+  --transition-apple-spring: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-bubble: 18px;
+  --radius-bubble-tail: 4px;
+}
+
+/* DARK MODE (Default macOS / iOS Dark Theme) */
+body.dark-mode {
+  --bg-desktop: #111113;
+  --window-bg: rgba(30, 30, 34, 0.85);
+  --window-border: rgba(255, 255, 255, 0.12);
+  --sidebar-bg: rgba(26, 26, 29, 0.8);
+  --chat-bg: #1c1c1e;
+  --chat-bg-gradient: radial-gradient(circle at top center, #242428 0%, #1c1c1e 100%);
+  --chat-header-bg: rgba(28, 28, 30, 0.82);
+  --input-bar-bg: rgba(28, 28, 30, 0.85);
+  --input-box-bg: rgba(44, 44, 46, 0.9);
+  --input-box-border: rgba(255, 255, 255, 0.12);
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #8E8E93;
+  --text-tertiary: #636366;
+  --text-muted: #48484A;
+
+  --bubble-imessage: linear-gradient(180deg, #0A84FF 0%, #007AFF 100%);
+  --bubble-sms: linear-gradient(180deg, #30D158 0%, #28CD41 100%);
+  --bubble-incoming: #2C2C2E;
+  --bubble-incoming-text: #FFFFFF;
+  --bubble-sent-text: #FFFFFF;
+
+  --border-divider: rgba(255, 255, 255, 0.08);
+  --search-bar-bg: rgba(118, 118, 128, 0.24);
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --sidebar-active: rgba(255, 255, 255, 0.12);
+
+  --tapback-bg: #323236;
+  --tapback-btn-hover: rgba(255, 255, 255, 0.15);
+  --tapback-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+
+  --card-bg: #2C2C2E;
+  --cash-card-bg: linear-gradient(135deg, #1c1c1e 0%, #2c2c2e 100%);
+  --cash-glow: rgba(255, 255, 255, 0.1);
+  --shadow-window: 0 25px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --dock-bg: rgba(30, 30, 35, 0.7);
+}
+
+/* LIGHT MODE */
+body.light-mode {
+  --bg-desktop: #E5E5EA;
+  --window-bg: rgba(255, 255, 255, 0.88);
+  --window-border: rgba(0, 0, 0, 0.1);
+  --sidebar-bg: rgba(242, 242, 247, 0.85);
+  --chat-bg: #FFFFFF;
+  --chat-bg-gradient: radial-gradient(circle at top center, #FAFAFC 0%, #FFFFFF 100%);
+  --chat-header-bg: rgba(255, 255, 255, 0.85);
+  --input-bar-bg: rgba(255, 255, 255, 0.88);
+  --input-box-bg: #FFFFFF;
+  --input-box-border: rgba(0, 0, 0, 0.15);
+
+  --text-primary: #000000;
+  --text-secondary: #8E8E93;
+  --text-tertiary: #AEAEB2;
+  --text-muted: #C7C7CC;
+
+  --bubble-imessage: linear-gradient(180deg, #007AFF 0%, #0066E0 100%);
+  --bubble-sms: linear-gradient(180deg, #34C759 0%, #2DB84D 100%);
+  --bubble-incoming: #E9E9EB;
+  --bubble-incoming-text: #000000;
+  --bubble-sent-text: #FFFFFF;
+
+  --border-divider: rgba(0, 0, 0, 0.06);
+  --search-bar-bg: rgba(118, 118, 128, 0.12);
+  --sidebar-hover: rgba(0, 0, 0, 0.04);
+  --sidebar-active: rgba(0, 122, 255, 0.12);
+
+  --tapback-bg: #FFFFFF;
+  --tapback-btn-hover: rgba(0, 0, 0, 0.06);
+  --tapback-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+
+  --card-bg: #F2F2F7;
+  --cash-card-bg: linear-gradient(135deg, #2c2c2e 0%, #1c1c1e 100%);
+  --cash-glow: rgba(0, 0, 0, 0.1);
+  --shadow-window: 0 25px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  --dock-bg: rgba(255, 255, 255, 0.7);
+}
+
+/* RESET & BASE */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: var(--font-system);
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-desktop);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  outline: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+input, textarea {
+  font-family: inherit;
+  outline: none;
+  border: none;
+  background: none;
+  color: inherit;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* ==========================================================================
+   SYSTEM MENUBAR (Top Apple Sequoia Bar)
+   ========================================================================== */
+.system-menubar {
+  height: 32px;
+  width: 100%;
+  background: rgba(20, 20, 22, 0.75);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 13px;
+  color: #FFFFFF;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.menubar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.apple-logo {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+.apple-logo:hover {
+  opacity: 1;
+}
+
+.app-menu-title {
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+
+.menubar-item {
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.menubar-item:hover {
+  color: #FFFFFF;
+}
+
+.menubar-center {
+  display: flex;
+  align-items: center;
+}
+
+.device-toggle-pill {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toggle-btn svg {
+  opacity: 0.8;
+}
+
+.toggle-btn.active {
+  background: #007AFF;
+  color: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.toggle-btn.active svg {
+  opacity: 1;
+}
+
+.menubar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s;
+}
+
+.icon-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.type-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+
+.type-indicator-dot.imessage {
+  background: #007AFF;
+  box-shadow: 0 0 6px rgba(0, 122, 255, 0.8);
+}
+
+.type-indicator-dot.sms {
+  background: #34C759;
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.8);
+}
+
+.icon-round-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.85);
+  transition: background 0.15s, color 0.15s;
+}
+.icon-round-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+}
+
+.system-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  min-width: 55px;
+  text-align: right;
+}
+
+/* ==========================================================================
+   APP VIEWPORT CONTAINER (macOS Window vs iPhone Bezel)
+   ========================================================================== */
+.app-viewport {
+  width: 100vw;
+  height: calc(100vh - 32px);
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+  background: var(--bg-desktop);
+  background-image: 
+    radial-gradient(at 15% 15%, rgba(0, 122, 255, 0.08) 0px, transparent 50%),
+    radial-gradient(at 85% 85%, rgba(175, 82, 222, 0.08) 0px, transparent 50%);
+}
+
+/* CANVAS EFFECTS LAYER */
+.effects-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* --------------------------------------------------------------------------
+   MODE 1: macOS DESKTOP WINDOW MODE
+   -------------------------------------------------------------------------- */
+body.macos-mode .iphone-frame-container {
+  width: 100%;
+  max-width: 1180px;
+  height: calc(100vh - 64px);
+  max-height: 820px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-window);
+  background: var(--window-bg);
+  backdrop-filter: blur(40px) saturate(190%);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  border: 1px solid var(--window-border);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.macos-mode .dynamic-island,
+body.macos-mode .ios-status-bar,
+body.macos-mode .iphone-home-bar,
+body.macos-mode .mobile-back-btn,
+body.macos-mode .mobile-sidebar-nav,
+body.macos-mode .iphone-speaker-notch {
+  display: none !important;
+}
+
+body.macos-mode .macos-titlebar {
+  display: flex !important;
+}
+
+/* --------------------------------------------------------------------------
+   MODE 2: iPhone 16 Pro VIEW MODE
+   -------------------------------------------------------------------------- */
+body.iphone-mode .iphone-frame-container {
+  width: 393px;
+  height: 852px;
+  border-radius: 54px;
+  background: #000000;
+  box-shadow: 
+    0 0 0 4px #2b2b2e,
+    0 0 0 10px #1a1a1c,
+    0 30px 80px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  border: 4px solid #141416;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.iphone-mode .macos-titlebar {
+  display: none !important;
+}
+
+body.iphone-mode .mobile-sidebar-nav {
+  display: flex !important;
+}
+
+body.iphone-mode .mobile-back-btn {
+  display: flex !important;
+}
+
+/* Dynamic Island */
+body.iphone-mode .dynamic-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000000;
+  border-radius: 20px;
+  height: 35px;
+  width: 125px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+  cursor: pointer;
+}
+
+body.iphone-mode .dynamic-island.expanded {
+  width: 355px;
+  height: 80px;
+  border-radius: 36px;
+  padding: 12px 18px;
+}
+
+.island-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.island-mini-avatar {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #007AFF;
+  display: inline-block;
+}
+
+.island-expanded {
+  display: none;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.dynamic-island.expanded .island-collapsed {
+  display: none;
+}
+.dynamic-island.expanded .island-expanded {
+  display: flex;
+}
+
+.island-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.island-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.island-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.island-sub {
+  font-size: 13px;
+  color: #34C759;
+}
+
+.island-wave {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.island-wave span {
+  width: 3px;
+  height: 12px;
+  background: #007AFF;
+  border-radius: 2px;
+  animation: wave 1s infinite alternate;
+}
+.island-wave span:nth-child(2) { animation-delay: 0.2s; height: 18px; }
+.island-wave span:nth-child(3) { animation-delay: 0.4s; height: 8px; }
+
+@keyframes wave {
+  0% { transform: scaleY(0.4); }
+  100% { transform: scaleY(1.2); }
+}
+
+/* iOS Status Bar */
+body.iphone-mode .ios-status-bar {
+  height: 52px;
+  padding: 14px 28px 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 100;
+  color: var(--text-primary);
+}
+
+.ios-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ios-battery {
+  width: 24px;
+  height: 12px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 1.5px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.ios-battery::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: 3px;
+  width: 2px;
+  height: 4px;
+  background: currentColor;
+  border-radius: 0 1px 1px 0;
+}
+
+.ios-battery-level {
+  width: 82%;
+  height: 100%;
+  background: currentColor;
+  border-radius: 1.5px;
+}
+
+/* iPhone Home Bar */
+body.iphone-mode .iphone-home-bar {
+  height: 24px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  z-index: 400;
+}
+
+.home-indicator {
+  width: 135px;
+  height: 5px;
+  background: var(--text-primary);
+  opacity: 0.8;
+  border-radius: 10px;
+}
+
+/* Responsive mobile mode sidebar toggle */
+body.iphone-mode .conversations-sidebar {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  border-right: none !important;
+}
+
+body.iphone-mode .chat-viewport {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+body.iphone-mode .messages-body.showing-chat .conversations-sidebar {
+  display: none !important;
+}
+
+body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
+  display: none !important;
+}
+
+/* ==========================================================================
+   macOS TITLEBAR
+   ========================================================================== */
+.macos-titlebar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border-divider);
+  background: rgba(255, 255, 255, 0.02);
+  z-index: 50;
+}
+
+.traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.traffic-lights .light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  cursor: pointer;
+  position: relative;
+  transition: opacity 0.2s;
+}
+
+.traffic-lights .light.red { background: #FF5F56; border: 1px solid #E0443E; }
+.traffic-lights .light.yellow { background: #FFBD2E; border: 1px solid #DEA123; }
+.traffic-lights .light.green { background: #27C93F; border: 1px solid #1AAB29; }
+
+.traffic-lights:hover .light::after {
+  opacity: 0.6;
+}
+
+.window-title-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.nav-sidebar-toggle:hover {
+  background: var(--sidebar-hover);
+  color: var(--text-primary);
+}
+
+.window-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.1px;
+}
+
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compose-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  color: #007AFF;
+  transition: background 0.15s;
+}
+.compose-btn:hover {
+  background: var(--sidebar-hover);
+}
+
+/* ==========================================================================
+   MESSAGES BODY: 3-PANE LAYOUT (Sidebar, Chat, Details)
+   ========================================================================== */
+.messages-window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.messages-body {
+  flex: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* --------------------------------------------------------------------------
+   1. CONVERSATIONS SIDEBAR
+   -------------------------------------------------------------------------- */
+.conversations-sidebar {
+  width: 320px;
+  min-width: 280px;
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-right: 1px solid var(--border-divider);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.sidebar-top {
+  padding: 10px 14px 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-sidebar-nav {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.sidebar-edit-link {
+  font-size: 17px;
+  color: #007AFF;
+  cursor: pointer;
+}
+
+.sidebar-big-title {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.compose-btn-mobile {
+  color: #007AFF;
+  cursor: pointer;
+}
+
+/* Apple Search Field */
+.apple-search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--search-bar-bg);
+  border-radius: 10px;
+  padding: 6px 10px;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.apple-search-bar:focus-within {
+  background: rgba(118, 118, 128, 0.32);
+}
+
+.apple-search-bar .search-icon {
+  color: var(--text-secondary);
+}
+
+.apple-search-bar input {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.apple-search-bar input::placeholder {
+  color: var(--text-secondary);
+}
+
+.search-clear-btn {
+  font-size: 12px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-mic {
+  color: var(--text-secondary);
+}
+
+/* PINNED SECTION */
+.pinned-section {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px 12px 14px 12px;
+}
+
+.pinned-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+}
+
+.pinned-item:hover {
+  transform: translateY(-2px);
+}
+
+.pinned-avatar-wrap {
+  width: 68px;
+  height: 68px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pinned-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.pinned-item.active .pinned-avatar {
+  border-color: #007AFF;
+}
+
+/* Floating message bubble preview above pinned avatar */
+.pinned-bubble-preview {
+  position: absolute;
+  top: -18px;
+  background: var(--bubble-incoming);
+  color: var(--bubble-incoming-text);
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 12px;
+  max-width: 82px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.pinned-bubble-preview::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 4px 4px 0;
+  border-style: solid;
+  border-color: var(--bubble-incoming) transparent;
+}
+
+.pinned-unread-dot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #007AFF;
+  border: 2px solid var(--sidebar-bg);
+}
+
+.pinned-name {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-primary);
+  width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border-divider);
+  margin: 0 14px;
+}
+
+/* CONVERSATION LIST */
+.conversations-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 8px;
+}
+
+.conversations-list::-webkit-scrollbar {
+  width: 6px;
+}
+.conversations-list::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 128, 0.25);
+  border-radius: 3px;
+}
+
+.convo-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 12px;
+}
+
+.convo-item:hover {
+  background: var(--sidebar-hover);
+}
+
+.convo-item.active {
+  background: var(--sidebar-active);
+}
+
+.convo-unread-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #007AFF;
+  flex-shrink: 0;
+  opacity: 0;
+}
+.convo-item.unread .convo-unread-indicator {
+  opacity: 1;
+}
+
+.convo-avatar-wrap {
+  width: 46px;
+  height: 46px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.convo-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Group avatar styling */
+.group-avatar-double {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.group-avatar-double img:nth-child(1) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sidebar-bg);
+}
+.group-avatar-double img:nth-child(2) {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sidebar-bg);
+}
+
+.convo-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.convo-top-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.convo-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.convo-time {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.convo-bottom-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.convo-snippet {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.convo-item.unread .convo-snippet {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Mute bell icon */
+.convo-mute-icon {
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   2. MAIN CHAT VIEWPORT
+   -------------------------------------------------------------------------- */
+.chat-viewport {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--chat-bg);
+  background-image: var(--chat-bg-gradient);
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Chat Header */
+.chat-header {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--chat-header-bg);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-bottom: 1px solid var(--border-divider);
+  z-index: 40;
+}
+
+.mobile-back-btn {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  color: #007AFF;
+  font-size: 17px;
+}
+
+.mobile-back-count {
+  background: #007AFF;
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.contact-header-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.contact-header-info:hover {
+  background: var(--sidebar-hover);
+}
+
+.contact-header-avatar-wrap {
+  position: relative;
+}
+
+.contact-header-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-presence-dot {
+  position: absolute;
+  bottom: 0;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  background: #34C759;
+  border-radius: 50%;
+  border: 1.5px solid var(--chat-bg);
+}
+
+.contact-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.contact-header-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.header-chevron {
+  color: var(--text-secondary);
+}
+
+.contact-header-subtitle {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-action-btn {
+  color: #007AFF;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+.header-action-btn:hover {
+  background: var(--sidebar-hover);
+}
+
+/* MESSAGE STREAM CONTAINER */
+.message-stream-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  scroll-behavior: smooth;
+}
+
+.message-stream-container::-webkit-scrollbar {
+  width: 6px;
+}
+.message-stream-container::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 128, 0.25);
+  border-radius: 3px;
+}
+
+.message-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+}
+
+/* Date separator pill */
+.date-separator {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 18px 0 10px 0;
+  letter-spacing: -0.1px;
+}
+
+/* MESSAGE ROW */
+.message-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 2px;
+  position: relative;
+  transition: margin-bottom 0.2s;
+}
+
+.message-row.last-in-group {
+  margin-bottom: 12px;
+}
+
+.message-row.sent {
+  align-items: flex-end;
+}
+
+.message-row.received {
+  align-items: flex-start;
+}
+
+.message-row-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 72%;
+  position: relative;
+}
+
+.sender-name-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 12px;
+  margin-bottom: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   THE 1:1 APPLE MESSAGE BUBBLES
+   -------------------------------------------------------------------------- */
+.bubble {
+  position: relative;
+  padding: 8px 14px;
+  font-size: 15px;
+  line-height: 1.38;
+  word-break: break-word;
+  border-radius: var(--radius-bubble);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.bubble:active {
+  transform: scale(0.98);
+}
+
+/* Sent Bubble (iMessage Blue) */
+.message-row.sent .bubble.imessage {
+  background: var(--bubble-imessage);
+  color: var(--bubble-sent-text);
+}
+
+/* Sent Bubble (SMS Green) */
+.message-row.sent .bubble.sms {
+  background: var(--bubble-sms);
+  color: var(--bubble-sent-text);
+}
+
+/* Received Bubble */
+.message-row.received .bubble {
+  background: var(--bubble-incoming);
+  color: var(--bubble-incoming-text);
+}
+
+/* Iconic Apple Bubble Tails (applied on the last message in a cluster) */
+.message-row.sent.last-in-group .bubble {
+  border-bottom-right-radius: var(--radius-bubble-tail);
+}
+
+.message-row.sent.last-in-group .bubble::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: -7px;
+  width: 14px;
+  height: 16px;
+  background: inherit;
+  border-bottom-left-radius: 12px 10px;
+  z-index: 1;
+}
+
+.message-row.sent.last-in-group .bubble::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: -10px;
+  width: 10px;
+  height: 16px;
+  background: var(--chat-bg);
+  border-bottom-left-radius: 10px;
+  z-index: 2;
+}
+
+.message-row.received.last-in-group .bubble {
+  border-bottom-left-radius: var(--radius-bubble-tail);
+}
+
+.message-row.received.last-in-group .bubble::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -7px;
+  width: 14px;
+  height: 16px;
+  background: var(--bubble-incoming);
+  border-bottom-right-radius: 12px 10px;
+  z-index: 1;
+}
+
+.message-row.received.last-in-group .bubble::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -10px;
+  width: 10px;
+  height: 16px;
+  background: var(--chat-bg);
+  border-bottom-right-radius: 10px;
+  z-index: 2;
+}
+
+/* Status text beneath sent messages (Delivered / Read) */
+.message-status {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  margin-right: 4px;
+  letter-spacing: -0.1px;
+}
+
+/* Hidden timestamp revealed on hover / drag */
+.message-timestamp-slide {
+  position: absolute;
+  right: -70px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.2s, right 0.2s;
+  pointer-events: none;
+}
+.message-row:hover .message-timestamp-slide {
+  opacity: 1;
+  right: -60px;
+}
+
+/* --------------------------------------------------------------------------
+   TAPBACK REACTIONS SYSTEM
+   -------------------------------------------------------------------------- */
+.tapback-badge-group {
+  position: absolute;
+  top: -12px;
+  display: flex;
+  align-items: center;
+  z-index: 15;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.25));
+}
+
+.message-row.sent .tapback-badge-group {
+  right: 12px;
+}
+
+.message-row.received .tapback-badge-group {
+  left: 12px;
+}
+
+.tapback-badge {
+  background: var(--tapback-bg);
+  color: var(--text-primary);
+  border-radius: 14px;
+  height: 22px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1.5px solid var(--chat-bg);
+  animation: tapbackBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes tapbackBounce {
+  0% { transform: scale(0.3); opacity: 0; }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Floating Tapback Popup Bar */
+.tapback-popup {
+  position: fixed;
+  z-index: 10000;
+  transform: translate(-50%, -100%);
+  margin-top: -12px;
+  filter: drop-shadow(var(--tapback-shadow));
+  animation: tapbackOpen 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+}
+
+@keyframes tapbackOpen {
+  from { opacity: 0; transform: translate(-50%, -90%) scale(0.7); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+
+.tapback-pill {
+  background: var(--tapback-bg);
+  border-radius: 30px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-divider);
+  backdrop-filter: blur(20px);
+}
+
+.tapback-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.tapback-btn:hover {
+  background: var(--tapback-btn-hover);
+  transform: scale(1.25);
+}
+
+.tapback-emoji {
+  font-size: 20px;
+}
+
+.tapback-text {
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.tapback-tail-big {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--tapback-bg);
+}
+
+.tapback-tail-small {
+  position: absolute;
+  bottom: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tapback-bg);
+}
+
+/* --------------------------------------------------------------------------
+   RICH MEDIA MESSAGES (Photos, Audio Wave, Apple Cash, Location)
+   -------------------------------------------------------------------------- */
+/* Photo Bubble */
+.bubble.media-photo {
+  padding: 3px;
+  background: transparent !important;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.bubble.media-photo::before,
+.bubble.media-photo::after {
+  display: none !important;
+}
+
+.chat-image {
+  max-width: 280px;
+  max-height: 220px;
+  border-radius: 16px;
+  display: block;
+  object-fit: cover;
+  cursor: zoom-in;
+  transition: opacity 0.2s;
+}
+.chat-image:hover {
+  opacity: 0.95;
+}
+
+/* Audio Memo Waveform Message */
+.audio-memo-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
+  padding: 4px 2px;
+}
+
+.audio-play-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s, background 0.15s;
+}
+.audio-play-btn:hover {
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.audio-wave-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 26px;
+}
+
+.wave-bar {
+  width: 2.5px;
+  background: currentColor;
+  border-radius: 2px;
+  opacity: 0.6;
+  transition: opacity 0.2s, height 0.2s;
+}
+.wave-bar.played {
+  opacity: 1;
+}
+
+.audio-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.audio-duration {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.audio-speed-btn {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Apple Cash Card Message */
+.bubble.media-cash {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.bubble.media-cash::before,
+.bubble.media-cash::after {
+  display: none !important;
+}
+
+.apple-cash-card-chat {
+  width: 260px;
+  background: var(--cash-card-bg);
+  border-radius: 16px;
+  padding: 16px;
+  color: #FFFFFF;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cash-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cash-card-logo {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.cash-status-tag {
+  font-size: 11px;
+  font-weight: 500;
+  color: #34C759;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.cash-amount-big {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.cash-note-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cash-card-action-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  transition: background 0.2s;
+}
+.cash-card-action-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Location Card Message */
+.location-preview-card {
+  width: 250px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--card-bg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.map-tile-mock {
+  height: 110px;
+  background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-pin {
+  width: 28px;
+  height: 28px;
+  background: #FF3B30;
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.location-card-footer {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.location-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.location-sub {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+/* Peelable Stickers placed on bubbles */
+.sticker-affixed {
+  position: absolute;
+  top: -18px;
+  right: -10px;
+  font-size: 32px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  pointer-events: none;
+  animation: stickerDrop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.3);
+}
+
+@keyframes stickerDrop {
+  0% { transform: scale(2) rotate(15deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   TYPING INDICATOR BUBBLE (Authentic 3-dot bounce)
+   -------------------------------------------------------------------------- */
+.typing-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--bubble-incoming);
+  border-radius: var(--radius-bubble);
+  border-bottom-left-radius: var(--radius-bubble-tail);
+  width: fit-content;
+  margin-bottom: 8px;
+}
+
+.typing-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1.1); opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   BUBBLE EFFECTS (Slam, Loud, Gentle, Invisible Ink)
+   -------------------------------------------------------------------------- */
+.bubble.effect-slam {
+  animation: effectSlam 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+}
+
+@keyframes effectSlam {
+  0% { transform: scale(3.5); opacity: 0; }
+  70% { transform: scale(0.9); }
+  85% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.bubble.effect-loud {
+  animation: effectLoud 0.7s ease-in-out forwards;
+}
+
+@keyframes effectLoud {
+  0% { transform: scale(1.4); }
+  25% { transform: scale(1.3) rotate(3deg); }
+  50% { transform: scale(1.2) rotate(-3deg); }
+  75% { transform: scale(1.05) rotate(1deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.bubble.effect-gentle {
+  animation: effectGentle 1.2s ease-out forwards;
+}
+
+@keyframes effectGentle {
+  0% { font-size: 8px; transform: scale(0.7); opacity: 0.3; }
+  100% { font-size: 15px; transform: scale(1); opacity: 1; }
+}
+
+/* Invisible Ink Canvas cover */
+.invisible-ink-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+  cursor: pointer;
+}
+
+.invisible-ink-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  z-index: 5;
+  transition: opacity 0.5s;
+}
+
+/* --------------------------------------------------------------------------
+   APPLE INPUT BAR & APPS DRAWER
+   -------------------------------------------------------------------------- */
+.chat-input-bar-wrap {
+  position: relative;
+  padding: 8px 16px 14px 16px;
+  background: var(--input-bar-bg);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-top: 1px solid var(--border-divider);
+}
+
+.chat-input-pill {
+  display: flex;
+  align-items: flex-end;
+  background: var(--input-box-bg);
+  border: 1px solid var(--input-box-border);
+  border-radius: 20px;
+  padding: 5px 8px;
+  gap: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.chat-input-pill:focus-within {
+  border-color: rgba(0, 122, 255, 0.4);
+  box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3);
+}
+
+.input-btn-apps {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(118, 118, 128, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2), background 0.15s;
+}
+.input-btn-apps:hover {
+  background: rgba(118, 118, 128, 0.3);
+  color: var(--text-primary);
+}
+.input-btn-apps.open {
+  transform: rotate(45deg);
+  background: #FF3B30;
+  color: #FFFFFF;
+}
+
+.input-text-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 4px 2px;
+}
+
+.input-text-container textarea {
+  width: 100%;
+  font-size: 15px;
+  line-height: 1.35;
+  resize: none;
+  max-height: 120px;
+  color: var(--text-primary);
+}
+.input-text-container textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+.input-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.input-btn-mic {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  border-radius: 50%;
+  transition: transform 0.15s, color 0.15s;
+}
+.input-btn-mic:hover {
+  color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+.input-btn-send {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #007AFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.input-btn-send:hover {
+  transform: scale(1.12);
+}
+.input-btn-send.sms {
+  background: #34C759;
+}
+
+/* iOS 17/18 Apps Floating Drawer */
+.apple-apps-drawer {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 16px;
+  background: rgba(36, 36, 40, 0.85);
+  backdrop-filter: blur(35px) saturate(180%);
+  -webkit-backdrop-filter: blur(35px) saturate(180%);
+  border-radius: 24px;
+  padding: 16px 20px;
+  border: 1px solid var(--border-divider);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  animation: drawerSlideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+}
+
+@keyframes drawerSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.drawer-header-pill {
+  width: 36px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin: 0 auto 12px auto;
+}
+
+.drawer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px 18px;
+}
+
+.app-drawer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.app-drawer-item:hover {
+  transform: translateY(-3px);
+}
+
+.app-drawer-item span {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.app-icon-bg {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.bg-gray { background: #636366; }
+.bg-gradient-photos { background: linear-gradient(135deg, #FF9500 0%, #FF2D55 100%); }
+.bg-yellow { background: #FFCC00; color: #000000; }
+.bg-green { background: #34C759; }
+.bg-red { background: #FF3B30; }
+.bg-blue { background: #007AFF; }
+.bg-purple { background: #AF52DE; }
+
+.cash-currency-symbol {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   3. DETAILS PANEL
+   -------------------------------------------------------------------------- */
+.details-panel {
+  width: 290px;
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-left: 1px solid var(--border-divider);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.details-header {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.details-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.details-done-btn {
+  color: #007AFF;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.details-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.details-contact-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.details-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.details-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.details-phone {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.details-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 14px;
+  width: 100%;
+}
+
+.details-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.details-action-item span {
+  font-size: 10.5px;
+  color: #007AFF;
+  font-weight: 500;
+}
+
+.details-action-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 122, 255, 0.12);
+  color: #007AFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, background 0.15s;
+}
+.details-action-circle:hover {
+  background: rgba(0, 122, 255, 0.2);
+  transform: scale(1.08);
+}
+
+.details-group {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.details-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+.details-setting-row.clickable {
+  cursor: pointer;
+}
+
+.setting-label-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 80%;
+}
+
+.setting-title {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.text-blue { color: #007AFF; }
+
+.setting-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Apple iOS Toggle Switch */
+.apple-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.apple-switch input { opacity: 0; width: 0; height: 0; }
+.apple-switch .slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #E9E9EB;
+  transition: .3s;
+  border-radius: 34px;
+}
+body.dark-mode .apple-switch .slider {
+  background-color: #39393D;
+}
+.apple-switch .slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.apple-switch input:checked + .slider {
+  background-color: #34C759;
+}
+.apple-switch input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+.group-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.group-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.group-link {
+  font-size: 12px;
+  color: #007AFF;
+  cursor: pointer;
+}
+
+.shared-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.shared-photo-item {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.shared-photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s;
+}
+.shared-photo-item:hover img {
+  transform: scale(1.05);
+}
+
+/* --------------------------------------------------------------------------
+   MODALS: Send with Effect, Apple Cash, QuickLook, Stickers
+   -------------------------------------------------------------------------- */
+.effect-picker-backdrop,
+.apple-cash-modal-backdrop,
+.quicklook-lightbox {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.effect-picker-sheet {
+  width: 360px;
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 20px;
+  border: 1px solid var(--border-divider);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+}
+
+@keyframes modalPop {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.effect-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.effect-sheet-header h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.effect-close-btn {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.effect-tabs {
+  display: flex;
+  background: var(--search-bar-bg);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.effect-tab {
+  flex: 1;
+  padding: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.effect-tab.active {
+  background: var(--chat-bg);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.effect-tab-content {
+  display: none;
+}
+.effect-tab-content.active {
+  display: block;
+}
+
+.effect-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.effect-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.15s, transform 0.15s;
+  border: 1px solid transparent;
+}
+.effect-choice-btn:hover {
+  background: rgba(0, 122, 255, 0.15);
+  border-color: #007AFF;
+  transform: translateX(4px);
+}
+.effect-choice-btn.selected {
+  background: rgba(0, 122, 255, 0.25);
+  border-color: #007AFF;
+}
+
+.effect-choice-btn .effect-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #007AFF;
+}
+
+.effect-choice-btn .effect-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.effect-send-action-btn {
+  width: 100%;
+  padding: 12px;
+  background: #007AFF;
+  color: #FFFFFF;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+}
+
+/* Apple Cash Sheet */
+.apple-cash-card-sheet {
+  width: 320px;
+  background: #1c1c1e;
+  border-radius: 24px;
+  padding: 24px;
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+}
+
+.cash-sheet-top {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cash-card-brand {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.cash-sheet-close {
+  color: var(--text-secondary);
+  font-size: 18px;
+}
+
+.cash-amount-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cash-amount-display .currency-symbol {
+  font-size: 38px;
+  font-weight: 700;
+}
+
+.cash-amount-display input {
+  font-size: 48px;
+  font-weight: 700;
+  width: 130px;
+  text-align: center;
+}
+
+.cash-quick-chips {
+  display: flex;
+  gap: 8px;
+}
+
+.cash-chip {
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  font-weight: 600;
+  color: #FFFFFF;
+  transition: all 0.2s;
+}
+.cash-chip.active, .cash-chip:hover {
+  background: #007AFF;
+}
+
+.cash-memo-input-wrap {
+  width: 100%;
+}
+.cash-memo-input-wrap input {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 14px;
+  color: #FFFFFF;
+}
+
+.cash-action-buttons {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.cash-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+}
+.cash-btn.request {
+  background: rgba(255, 255, 255, 0.15);
+  color: #FFFFFF;
+}
+.cash-btn.send {
+  background: #34C759;
+  color: #FFFFFF;
+}
+
+/* QuickLook Modal */
+.quicklook-lightbox img {
+  max-width: 85vw;
+  max-height: 85vh;
+  border-radius: 16px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.8);
+  animation: modalPop 0.25s ease-out;
+}
+
+.quicklook-close {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  font-size: 28px;
+  color: #FFFFFF;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+/* Stickers Drawer */
+.stickers-sheet {
+  position: absolute;
+  bottom: 80px;
+  left: 16px;
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid var(--border-divider);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+  z-index: 210;
+  width: 280px;
+}
+
+.stickers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.stickers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.sticker-item {
+  font-size: 32px;
+  text-align: center;
+  cursor: grab;
+  transition: transform 0.15s;
+}
+.sticker-item:hover {
+  transform: scale(1.25);
+}

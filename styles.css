@@ -105,8 +105,9 @@ body.light-mode {
 html, body {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
-  background-color: var(--bg-desktop);
+  background-color: var(--chat-bg);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -132,178 +133,19 @@ input, textarea {
 }
 
 /* ==========================================================================
-   SYSTEM MENUBAR (Top Apple Sequoia Bar)
-   ========================================================================== */
-.system-menubar {
-  height: 32px;
-  width: 100%;
-  background: rgba(20, 20, 22, 0.75);
-  backdrop-filter: blur(25px) saturate(180%);
-  -webkit-backdrop-filter: blur(25px) saturate(180%);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  font-size: 13px;
-  color: #FFFFFF;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  z-index: 1000;
-  position: fixed;
-  top: 0;
-  left: 0;
-}
-
-.menubar-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.apple-logo {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  opacity: 0.9;
-  transition: opacity 0.2s;
-}
-.apple-logo:hover {
-  opacity: 1;
-}
-
-.app-menu-title {
-  font-weight: 600;
-  letter-spacing: -0.1px;
-}
-
-.menubar-item {
-  color: rgba(255, 255, 255, 0.85);
-  cursor: pointer;
-  transition: color 0.15s;
-}
-.menubar-item:hover {
-  color: #FFFFFF;
-}
-
-.menubar-center {
-  display: flex;
-  align-items: center;
-}
-
-.device-toggle-pill {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 12px;
-  font-size: 11.5px;
-  font-weight: 500;
-  border-radius: 12px;
-  color: rgba(255, 255, 255, 0.75);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.toggle-btn svg {
-  opacity: 0.8;
-}
-
-.toggle-btn.active {
-  background: #007AFF;
-  color: #FFFFFF;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-.toggle-btn.active svg {
-  opacity: 1;
-}
-
-.menubar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.icon-pill-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11.5px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.2s;
-}
-
-.icon-pill-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-}
-
-.type-indicator-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  transition: background 0.3s;
-}
-
-.type-indicator-dot.imessage {
-  background: #007AFF;
-  box-shadow: 0 0 6px rgba(0, 122, 255, 0.8);
-}
-
-.type-indicator-dot.sms {
-  background: #34C759;
-  box-shadow: 0 0 6px rgba(52, 199, 89, 0.8);
-}
-
-.icon-round-btn {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: rgba(255, 255, 255, 0.85);
-  transition: background 0.15s, color 0.15s;
-}
-.icon-round-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #FFFFFF;
-}
-
-.system-time {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
-  min-width: 55px;
-  text-align: right;
-}
-
-/* ==========================================================================
-   APP VIEWPORT CONTAINER (macOS Window vs iPhone Bezel)
+   APP VIEWPORT CONTAINER (Mobile Interface)
    ========================================================================== */
 .app-viewport {
-  width: 100vw;
-  height: calc(100vh - 32px);
-  margin-top: 32px;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   position: relative;
   overflow: hidden;
-  padding: 16px;
-  background: var(--bg-desktop);
-  background-image: 
-    radial-gradient(at 15% 15%, rgba(0, 122, 255, 0.08) 0px, transparent 50%),
-    radial-gradient(at 85% 85%, rgba(175, 82, 222, 0.08) 0px, transparent 50%);
+  background: var(--chat-bg);
 }
 
 /* CANVAS EFFECTS LAYER */
@@ -317,355 +159,15 @@ input, textarea {
   z-index: 9999;
 }
 
-/* --------------------------------------------------------------------------
-   MODE 1: macOS DESKTOP WINDOW MODE
-   -------------------------------------------------------------------------- */
-body.macos-mode .iphone-frame-container {
-  width: 100%;
-  max-width: 1180px;
-  height: calc(100vh - 64px);
-  max-height: 820px;
-  border-radius: 14px;
-  box-shadow: var(--shadow-window);
-  background: var(--window-bg);
-  backdrop-filter: blur(40px) saturate(190%);
-  -webkit-backdrop-filter: blur(40px) saturate(190%);
-  border: 1px solid var(--window-border);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-body.macos-mode .dynamic-island,
-body.macos-mode .ios-status-bar,
-body.macos-mode .iphone-home-bar,
-body.macos-mode .mobile-back-btn,
-body.macos-mode .mobile-sidebar-nav,
-body.macos-mode .iphone-speaker-notch {
-  display: none !important;
-}
-
-body.macos-mode .macos-titlebar {
-  display: flex !important;
-}
-
-/* --------------------------------------------------------------------------
-   MODE 2: iPhone 16 Pro VIEW MODE
-   -------------------------------------------------------------------------- */
-body.iphone-mode .iphone-frame-container {
-  width: 393px;
-  height: 852px;
-  border-radius: 54px;
-  background: #000000;
-  box-shadow: 
-    0 0 0 4px #2b2b2e,
-    0 0 0 10px #1a1a1c,
-    0 30px 80px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  border: 4px solid #141416;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-body.iphone-mode .macos-titlebar {
-  display: none !important;
-}
-
-body.iphone-mode .mobile-sidebar-nav {
-  display: flex !important;
-}
-
-body.iphone-mode .mobile-back-btn {
-  display: flex !important;
-}
-
-/* Dynamic Island */
-body.iphone-mode .dynamic-island {
-  position: absolute;
-  top: 11px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #000000;
-  border-radius: 20px;
-  height: 35px;
-  width: 125px;
-  z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 10px;
-  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.2);
-  cursor: pointer;
-}
-
-body.iphone-mode .dynamic-island.expanded {
-  width: 355px;
-  height: 80px;
-  border-radius: 36px;
-  padding: 12px 18px;
-}
-
-.island-collapsed {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.island-mini-avatar {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #007AFF;
-  display: inline-block;
-}
-
-.island-expanded {
-  display: none;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-}
-
-.dynamic-island.expanded .island-collapsed {
-  display: none;
-}
-.dynamic-island.expanded .island-expanded {
-  display: flex;
-}
-
-.island-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.island-info {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.island-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #FFFFFF;
-}
-
-.island-sub {
-  font-size: 13px;
-  color: #34C759;
-}
-
-.island-wave {
-  display: flex;
-  gap: 3px;
-  align-items: center;
-}
-.island-wave span {
-  width: 3px;
-  height: 12px;
-  background: #007AFF;
-  border-radius: 2px;
-  animation: wave 1s infinite alternate;
-}
-.island-wave span:nth-child(2) { animation-delay: 0.2s; height: 18px; }
-.island-wave span:nth-child(3) { animation-delay: 0.4s; height: 8px; }
-
-@keyframes wave {
-  0% { transform: scaleY(0.4); }
-  100% { transform: scaleY(1.2); }
-}
-
-/* iOS Status Bar */
-body.iphone-mode .ios-status-bar {
-  height: 52px;
-  padding: 14px 28px 0 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 14px;
-  font-weight: 600;
-  z-index: 100;
-  color: var(--text-primary);
-}
-
-.ios-icons {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ios-battery {
-  width: 24px;
-  height: 12px;
-  border: 1px solid currentColor;
-  border-radius: 4px;
-  padding: 1.5px;
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-
-.ios-battery::after {
-  content: "";
-  position: absolute;
-  right: -3px;
-  top: 3px;
-  width: 2px;
-  height: 4px;
-  background: currentColor;
-  border-radius: 0 1px 1px 0;
-}
-
-.ios-battery-level {
-  width: 82%;
-  height: 100%;
-  background: currentColor;
-  border-radius: 1.5px;
-}
-
-/* iPhone Home Bar */
-body.iphone-mode .iphone-home-bar {
-  height: 24px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  bottom: 6px;
-  left: 0;
-  z-index: 400;
-}
-
-.home-indicator {
-  width: 135px;
-  height: 5px;
-  background: var(--text-primary);
-  opacity: 0.8;
-  border-radius: 10px;
-}
-
-/* Responsive mobile mode sidebar toggle */
-body.iphone-mode .conversations-sidebar {
-  width: 100% !important;
-  min-width: 100% !important;
-  max-width: 100% !important;
-  border-right: none !important;
-}
-
-body.iphone-mode .chat-viewport {
-  width: 100% !important;
-  min-width: 100% !important;
-}
-
-body.iphone-mode .messages-body.showing-chat .conversations-sidebar {
-  display: none !important;
-}
-
-body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
-  display: none !important;
-}
-
 /* ==========================================================================
-   macOS TITLEBAR
-   ========================================================================== */
-.macos-titlebar {
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--border-divider);
-  background: rgba(255, 255, 255, 0.02);
-  z-index: 50;
-}
-
-.traffic-lights {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.traffic-lights .light {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-  cursor: pointer;
-  position: relative;
-  transition: opacity 0.2s;
-}
-
-.traffic-lights .light.red { background: #FF5F56; border: 1px solid #E0443E; }
-.traffic-lights .light.yellow { background: #FFBD2E; border: 1px solid #DEA123; }
-.traffic-lights .light.green { background: #27C93F; border: 1px solid #1AAB29; }
-
-.traffic-lights:hover .light::after {
-  opacity: 0.6;
-}
-
-.window-title-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.nav-sidebar-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  color: var(--text-secondary);
-  transition: all 0.15s;
-}
-.nav-sidebar-toggle:hover {
-  background: var(--sidebar-hover);
-  color: var(--text-primary);
-}
-
-.window-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  letter-spacing: -0.1px;
-}
-
-.titlebar-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.compose-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  color: #007AFF;
-  transition: background 0.15s;
-}
-.compose-btn:hover {
-  background: var(--sidebar-hover);
-}
-
-/* ==========================================================================
-   MESSAGES BODY: 3-PANE LAYOUT (Sidebar, Chat, Details)
+   MESSAGES WINDOW & MOBILE NAVIGATION
    ========================================================================== */
 .messages-window {
   flex: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -678,51 +180,88 @@ body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
   position: relative;
 }
 
-/* --------------------------------------------------------------------------
-   1. CONVERSATIONS SIDEBAR
-   -------------------------------------------------------------------------- */
+/* Screen switching between Conversation List and Active Chat */
 .conversations-sidebar {
-  width: 320px;
-  min-width: 280px;
-  background: var(--sidebar-bg);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border-right: 1px solid var(--border-divider);
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
+  background: var(--chat-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  border-right: none;
 }
 
-.sidebar-top {
-  padding: 10px 14px 8px 14px;
+.chat-viewport {
+  width: 100%;
+  min-width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  height: 100%;
+  background: var(--chat-bg);
+  background-image: var(--chat-bg-gradient);
+  position: relative;
+  overflow: hidden;
+}
+
+.messages-body.showing-chat .conversations-sidebar {
+  display: none !important;
+}
+
+.messages-body:not(.showing-chat) .chat-viewport {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   1. CONVERSATIONS SIDEBAR (LIST SCREEN)
+   -------------------------------------------------------------------------- */
+.sidebar-top {
+  padding: 12px 16px 8px 16px;
+  padding-top: max(14px, env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--chat-bg);
 }
 
 .mobile-sidebar-nav {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 
 .sidebar-edit-link {
   font-size: 17px;
   color: #007AFF;
   cursor: pointer;
+  background: none;
+  border: none;
+  font-weight: 400;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .sidebar-big-title {
-  font-size: 28px;
+  font-size: 19px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.4px;
+  color: var(--text-primary);
+  text-align: center;
 }
 
 .compose-btn-mobile {
   color: #007AFF;
   cursor: pointer;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Apple Search Field */
@@ -891,20 +430,17 @@ body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
 .convo-item {
   display: flex;
   align-items: center;
-  padding: 10px 10px;
-  border-radius: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
   cursor: pointer;
   position: relative;
   transition: background 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   gap: 12px;
+  border-bottom: 0.5px solid var(--border-divider);
 }
 
-.convo-item:hover {
+.convo-item:hover, .convo-item:active {
   background: var(--sidebar-hover);
-}
-
-.convo-item.active {
-  background: var(--sidebar-active);
 }
 
 .convo-unread-indicator {
@@ -1030,10 +566,14 @@ body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
 /* Chat Header */
 .chat-header {
   height: 56px;
+  min-height: calc(56px + env(safe-area-inset-top, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
+  padding-top: max(4px, env(safe-area-inset-top, 0px));
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
   background: var(--chat-header-bg);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
@@ -1042,20 +582,32 @@ body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
 }
 
 .mobile-back-btn {
-  display: none;
+  display: flex !important;
   align-items: center;
   gap: 2px;
   color: #007AFF;
   font-size: 17px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px 6px 4px 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.mobile-back-count {
-  background: #007AFF;
-  color: #FFFFFF;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 10px;
+.mobile-back-label {
+  font-size: 17px;
+  color: #007AFF;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+.convo-chevron {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .contact-header-info {
@@ -1214,14 +766,25 @@ body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
    -------------------------------------------------------------------------- */
 .bubble {
   position: relative;
-  padding: 8px 14px;
-  font-size: 15px;
-  line-height: 1.38;
+  padding: 9px 14px;
+  font-size: 16px;
+  line-height: 1.36;
+  letter-spacing: -0.15px;
   word-break: break-word;
+  white-space: pre-wrap;
   border-radius: var(--radius-bubble);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.data-detector-link {
+  text-decoration: underline;
+  text-decoration-thickness: 1.1px;
+  text-underline-offset: 2.5px;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .bubble:active {
@@ -1261,6 +824,10 @@ body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
   background: inherit;
   border-bottom-left-radius: 12px 10px;
   z-index: 1;
+}
+
+.message-row.sent.last-in-group .bubble.sms::before {
+  background: #2DB84D;
 }
 
 .message-row.sent.last-in-group .bubble::after {
@@ -1769,7 +1336,10 @@ body.iphone-mode .messages-body:not(.showing-chat) .chat-viewport {
    -------------------------------------------------------------------------- */
 .chat-input-bar-wrap {
   position: relative;
-  padding: 8px 16px 14px 16px;
+  padding: 8px 12px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
   background: var(--input-bar-bg);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
@@ -2134,6 +1704,38 @@ body.dark-mode .apple-switch .slider {
 }
 .apple-switch input:checked + .slider:before {
   transform: translateX(18px);
+}
+
+.details-action-clear-btn {
+  background: #FF3B30;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.details-action-clear-btn:active {
+  opacity: 0.75;
+  transform: scale(0.97);
+}
+
+.details-action-sample-btn {
+  background: #007AFF;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.details-action-sample-btn:active {
+  opacity: 0.75;
+  transform: scale(0.97);
 }
 
 .group-header-row {

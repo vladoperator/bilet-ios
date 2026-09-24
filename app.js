@@ -407,224 +407,122 @@ class AppleEffectsEngine {
 }
 
 // ============================================================================
-// 3. SEED CONVERSATION DATA & CONTACTS
 // ============================================================================
+// 3. SECURE CLIENT SESSION & COOKIE/CACHE STORAGE MANAGER
+//    Isolates each user's conversation data to their specific browser session
+//    so multiple users never see each other's messages.
+// ============================================================================
+class BiletStorageManager {
+  constructor() {
+    this.sessionCookieName = 'bilet_user_session';
+    this.storageKeyPrefix = 'bilet_data_';
+    this.userId = this.initSession();
+  }
+
+  initSession() {
+    // 1. Check URL override ?session=... or ?uid=... for multi-session testing
+    const params = new URLSearchParams(window.location.search);
+    const queryUid = params.get('session') || params.get('uid');
+    if (queryUid && /^[a-zA-Z0-9_\-]+$/.test(queryUid)) {
+      this.setCookie(this.sessionCookieName, queryUid, 365);
+      try { localStorage.setItem('bilet_user_id', queryUid); } catch (e) {}
+      return queryUid;
+    }
+
+    // 2. Check Cookie
+    const cookieUid = this.getCookie(this.sessionCookieName);
+    if (cookieUid && /^[a-zA-Z0-9_\-]+$/.test(cookieUid)) {
+      try { localStorage.setItem('bilet_user_id', cookieUid); } catch (e) {}
+      return cookieUid;
+    }
+
+    // 3. Check LocalStorage
+    try {
+      const localUid = localStorage.getItem('bilet_user_id');
+      if (localUid && /^[a-zA-Z0-9_\-]+$/.test(localUid)) {
+        this.setCookie(this.sessionCookieName, localUid, 365);
+        return localUid;
+      }
+    } catch (e) {}
+
+    // 4. Generate fresh unique client session ID for this browser
+    const newUid = 'usr_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
+    this.setCookie(this.sessionCookieName, newUid, 365);
+    try {
+      localStorage.setItem('bilet_user_id', newUid);
+    } catch (e) {}
+    return newUid;
+  }
+
+  getCookie(name) {
+    const prefix = name + '=';
+    const decoded = decodeURIComponent(document.cookie);
+    const ca = decoded.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i].trim();
+      if (c.indexOf(prefix) === 0) {
+        return c.substring(prefix.length);
+      }
+    }
+    return null;
+  }
+
+  setCookie(name, value, days = 365) {
+    let expires = '';
+    if (days) {
+      const d = new Date();
+      d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+      expires = '; expires=' + d.toUTCString();
+    }
+    document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/; SameSite=Lax';
+  }
+
+  loadUserData() {
+    const key = this.storageKeyPrefix + this.userId;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn('LocalStorage load error', e);
+    }
+    return null;
+  }
+
+  saveUserData(data) {
+    const key = this.storageKeyPrefix + this.userId;
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {
+      console.warn('LocalStorage save error', e);
+    }
+  }
+
+  clearUserData() {
+    const key = this.storageKeyPrefix + this.userId;
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.warn('LocalStorage clear error', e);
+    }
+  }
+}
+
+const AVATAR_4000 = './assets/avatar_4000.svg';
+
 const CONVERSATIONS_DATA = [
   {
-    id: 'sarah',
-    name: 'Sarah Jenkins',
-    phone: '+1 (408) 555-0199',
-    avatar: './assets/sarah.jpg',
-    isPinned: true,
-    pinnedPreview: 'See you at 7! ☕',
-    unreadCount: 1,
-    isOnline: true,
-    lastTime: '9:41 AM',
-    messages: [
-      {
-        id: 's1',
-        sender: 'sarah',
-        type: 'text',
-        text: 'Morning! Are we still on for the Yosemite road trip this weekend?',
-        time: '9:24 AM',
-        reactions: { love: 1 }
-      },
-      {
-        id: 's2',
-        sender: 'me',
-        type: 'text',
-        text: 'Yes absolutely! Packed my hiking boots and camera gear already 🎒',
-        time: '9:28 AM',
-        status: 'Delivered'
-      },
-      {
-        id: 's3',
-        sender: 'sarah',
-        type: 'image',
-        mediaUrl: './assets/yosemite.jpg',
-        time: '9:30 AM',
-        reactions: { like: 1 }
-      },
-      {
-        id: 's4',
-        sender: 'sarah',
-        type: 'text',
-        text: 'Look at the alpine lake we are hiking to on Saturday! Crystal clear water 😍',
-        time: '9:31 AM'
-      },
-      {
-        id: 's5',
-        sender: 'sarah',
-        type: 'audio',
-        duration: 14,
-        time: '9:35 AM'
-      },
-      {
-        id: 's6',
-        sender: 'me',
-        type: 'cash',
-        amount: 25,
-        memo: 'Coffee & Snacks split',
-        time: '9:38 AM',
-        status: 'Completed'
-      },
-      {
-        id: 's7',
-        sender: 'sarah',
-        type: 'text',
-        text: 'Got it, thank you! See you at 7! ☕',
-        time: '9:41 AM'
-      }
-    ]
-  },
-  {
-    id: 'tim',
-    name: 'Tim Cook',
-    phone: '+1 (408) 996-1010',
-    avatar: './assets/tim.jpg',
-    isPinned: true,
-    pinnedPreview: 'Looking forward to WWDC 🚀',
-    unreadCount: 0,
-    isOnline: true,
-    lastTime: 'Yesterday',
-    messages: [
-      {
-        id: 't1',
-        sender: 'tim',
-        type: 'text',
-        text: 'Good morning! The new Apple Intelligence features are getting remarkable feedback.',
-        time: 'Yesterday 10:15 AM',
-        reactions: { exclamation: 1 }
-      },
-      {
-        id: 't2',
-        sender: 'me',
-        type: 'text',
-        text: 'The on-device models and contextual awareness feel like magic Tim!',
-        time: 'Yesterday 10:18 AM',
-        status: 'Read Yesterday'
-      },
-      {
-        id: 't3',
-        sender: 'tim',
-        type: 'text',
-        text: 'We think you are going to love what the team has prepared next. Looking forward to WWDC 🚀',
-        time: 'Yesterday 10:20 AM',
-        reactions: { love: 1 }
-      }
-    ]
-  },
-  {
-    id: 'alex',
-    name: 'Alex Chen',
-    phone: '+1 (650) 555-0142',
-    avatar: './assets/alex.jpg',
-    isPinned: true,
-    pinnedPreview: 'Check this cafe! 🥐',
-    unreadCount: 0,
-    isOnline: false,
-    lastTime: 'Sunday',
-    messages: [
-      {
-        id: 'a1',
-        sender: 'alex',
-        type: 'text',
-        text: 'Hey! Found this brand new bakery in Hayes Valley.',
-        time: 'Sunday 11:02 AM'
-      },
-      {
-        id: 'a2',
-        sender: 'alex',
-        type: 'image',
-        mediaUrl: './assets/coffee.jpg',
-        time: 'Sunday 11:03 AM',
-        reactions: { haha: 1 },
-        sticker: '🔥'
-      },
-      {
-        id: 'a3',
-        sender: 'me',
-        type: 'text',
-        text: 'That almond croissant looks unreal! Let us go tomorrow.',
-        time: 'Sunday 11:05 AM',
-        status: 'Read Sunday'
-      }
-    ]
-  },
-  {
-    id: 'dev_team',
-    name: 'SwiftUI & Core Architecture',
-    phone: 'Group (4 people)',
-    avatar: './assets/tim.jpg',
-    isGroup: true,
-    groupAvatars: ['./assets/alex.jpg', './assets/sarah.jpg'],
-    isPinned: false,
-    unreadCount: 2,
-    isOnline: true,
-    lastTime: '9:12 AM',
-    messages: [
-      {
-        id: 'd1',
-        sender: 'Liam',
-        isReceived: true,
-        type: 'text',
-        text: 'Merged the metal shader pipeline for fluid glass reflections.',
-        time: '8:45 AM'
-      },
-      {
-        id: 'd2',
-        sender: 'me',
-        type: 'text',
-        text: 'Tested at 120Hz ProMotion on iPad and iPhone 16 Pro, silky smooth!',
-        time: '9:00 AM',
-        status: 'Delivered'
-      },
-      {
-        id: 'd3',
-        sender: 'Chloe',
-        isReceived: true,
-        type: 'text',
-        text: 'PR #4082 is ready for review. Take a look when you have a moment.',
-        time: '9:12 AM'
-      }
-    ]
-  },
-  {
-    id: 'pizza',
-    name: "Luigi's Artisan Pizza",
-    phone: 'SMS: 284-99',
-    avatar: './assets/coffee.jpg',
+    id: '4000',
+    name: '4000',
+    phone: '4000',
+    avatar: AVATAR_4000,
     isSMS: true,
     isPinned: false,
     unreadCount: 0,
     isOnline: false,
-    lastTime: 'Tuesday',
-    messages: [
-      {
-        id: 'p1',
-        sender: 'luigi',
-        isReceived: true,
-        type: 'text',
-        text: 'Your Margherita & Truffle Pizza order #884 is fresh out of the oven! 🍕',
-        time: 'Tuesday 7:15 PM'
-      },
-      {
-        id: 'p2',
-        sender: 'me',
-        isSMS: true,
-        type: 'text',
-        text: 'Thanks! Buzz unit 4B when arriving.',
-        time: 'Tuesday 7:16 PM'
-      },
-      {
-        id: 'p3',
-        sender: 'luigi',
-        isReceived: true,
-        type: 'text',
-        text: 'Driver is on the way. Estimated arrival 7:28 PM. Buon appetito!',
-        time: 'Tuesday 7:18 PM'
-      }
-    ]
+    lastTime: '',
+    messages: []
   }
 ];
 
@@ -633,12 +531,16 @@ const CONVERSATIONS_DATA = [
 // ============================================================================
 class AppleMessagesApp {
   constructor() {
-    this.conversations = CONVERSATIONS_DATA;
-    this.activeConvoId = 'sarah';
-    this.currentMessageType = 'imessage'; // 'imessage' or 'sms'
+    this.storage = new BiletStorageManager();
+    this.conversations = JSON.parse(JSON.stringify(CONVERSATIONS_DATA));
+    this.activeConvoId = '4000';
+    this.currentMessageType = 'sms'; // Default SMS mode
     this.activeTapbackTarget = null;
     this.selectedEffect = null;
     this.audioPlayingId = null;
+
+    // Load saved conversation for this isolated user session
+    this.loadSessionData();
 
     // DOM Elements
     this.elements = {
@@ -668,19 +570,6 @@ class AppleMessagesApp {
       detailsAvatar: document.getElementById('detailsAvatar'),
       detailsName: document.getElementById('detailsName'),
       detailsPhone: document.getElementById('detailsPhone'),
-      btnMacView: document.getElementById('btnMacView'),
-      btnIphoneView: document.getElementById('btnIphoneView'),
-      btnToggleMsgType: document.getElementById('btnToggleMsgType'),
-      msgTypeLabel: document.getElementById('msgTypeLabel'),
-      btnSoundToggle: document.getElementById('btnSoundToggle'),
-      soundIconOn: document.getElementById('soundIconOn'),
-      soundIconOff: document.getElementById('soundIconOff'),
-      btnThemeToggle: document.getElementById('btnThemeToggle'),
-      themeIconDark: document.getElementById('themeIconDark'),
-      themeIconLight: document.getElementById('themeIconLight'),
-      systemClock: document.getElementById('systemClock'),
-      iosTime: document.getElementById('iosTime'),
-      dynamicIsland: document.getElementById('dynamicIsland'),
       mobileBackBtn: document.getElementById('mobileBackBtn'),
       messagesBody: document.querySelector('.messages-body'),
       conversationsSidebar: document.getElementById('conversationsSidebar'),
@@ -689,16 +578,159 @@ class AppleMessagesApp {
     };
 
     // Canvas Special Effects
-    this.effectsEngine = new AppleEffectsEngine(document.getElementById('effectsCanvas'));
+    const canvas = document.getElementById('effectsCanvas');
+    this.effectsEngine = canvas ? new AppleEffectsEngine(canvas) : null;
 
     this.init();
   }
 
   init() {
+    this.applyThemePreference();
+    if (this.elements.messagesBody) {
+      this.elements.messagesBody.classList.add('showing-chat');
+    }
     this.bindEvents();
-    this.startClock();
     this.renderSidebar();
     this.renderActiveConversation();
+  }
+
+  loadSessionData() {
+    const saved = this.storage.loadUserData();
+    if (saved && Array.isArray(saved.messages)) {
+      const convo = this.conversations.find(c => c.id === '4000');
+      if (convo) {
+        convo.messages = saved.messages;
+        convo.lastTime = saved.lastTime || '';
+      }
+    }
+  }
+
+  saveSessionData() {
+    const convo = this.conversations.find(c => c.id === '4000');
+    if (convo) {
+      this.storage.saveUserData({
+        messages: convo.messages,
+        lastTime: convo.lastTime,
+        theme: 'dark'
+      });
+    }
+  }
+
+  applyThemePreference() {
+    document.body.classList.remove('light-mode');
+    document.body.classList.add('dark-mode');
+    try {
+      localStorage.setItem('bilet_theme', 'dark');
+    } catch (e) {}
+  }
+
+  clearConversation() {
+    const convo = this.conversations.find(c => c.id === '4000');
+    if (!convo) return;
+    convo.messages = [];
+    convo.lastTime = '';
+    this.storage.clearUserData();
+    this.renderActiveConversation();
+    this.renderSidebar();
+    soundEngine.playTapbackPop();
+  }
+
+  loadSampleTicket() {
+    const convo = this.conversations.find(c => c.id === '4000');
+    if (!convo) return;
+
+    const sampleDate = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timeStr = `${pad(sampleDate.getHours())}:${pad(sampleDate.getMinutes())}`;
+    const ticket = this.generateRtecTicket('2424', sampleDate);
+
+    convo.messages = [
+      {
+        id: 'm_sample_sent',
+        sender: 'me',
+        type: 'text',
+        text: '2424',
+        time: timeStr,
+        timestamp: sampleDate.getTime() - 60000,
+        status: 'Delivered',
+        isSMS: true
+      },
+      {
+        id: 'm_sample_recv',
+        sender: '4000',
+        type: 'text',
+        text: ticket.textContent,
+        html: ticket.htmlContent,
+        time: timeStr,
+        timestamp: sampleDate.getTime(),
+        isSMS: true,
+        isTicket: true
+      }
+    ];
+    convo.lastTime = timeStr;
+    this.saveSessionData();
+    this.renderActiveConversation();
+    this.renderSidebar();
+    soundEngine.playReceivedChime();
+  }
+
+  extractBoardNumber(input) {
+    const trimmed = (input || '').trim();
+    const match = trimmed.match(/^(?:bord|bilet)\s*(\S+)$/i);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return trimmed || '2424';
+  }
+
+  generateRtecTicket(userText, customDate = null) {
+    const boardNumber = this.extractBoardNumber(userText);
+    const now = customDate || new Date();
+
+    // Randomize Bilet Nr: MCT-000 followed by 6 random digits
+    // Total 9 digits starting with 000 (e.g. MCT-000326672)
+    const random6 = String(Math.floor(100000 + Math.random() * 900000));
+    const ticketNumber = `MCT-000${random6}`;
+
+    // Format Date & Time: DD.MM.YYYY HH:MM
+    const pad = (n) => String(n).padStart(2, '0');
+    const day = pad(now.getDate());
+    const month = pad(now.getMonth() + 1);
+    const year = now.getFullYear();
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    const dateFormatted = `${day}.${month}.${year} ${hours}:${minutes}`;
+
+    // Plain text and formatted HTML with underlined "7 MDL"
+    const textContent = `IM RTEC\n\nBilet Nr ${ticketNumber}\n\n${dateFormatted}\n\nPret 7 MDL\n\nBord ${boardNumber}`;
+    const htmlContent = `IM RTEC<br><br>Bilet Nr ${ticketNumber}<br><br>${dateFormatted}<br><br>Pret <span class="data-detector-link">7 MDL</span><br><br>Bord ${this.escapeHtml(boardNumber)}`;
+
+    return {
+      boardNumber,
+      ticketNumber,
+      dateFormatted,
+      textContent,
+      htmlContent,
+      timestamp: now.getTime()
+    };
+  }
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  formatHeaderDate(timestamp) {
+    const d = new Date(timestamp || Date.now());
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()} at ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   // --------------------------------------------------------------------------
@@ -838,23 +870,42 @@ class AppleMessagesApp {
     this.elements.btnToggleDetails.addEventListener('click', () => this.toggleDetailsPanel());
     this.elements.btnDetailsDone.addEventListener('click', () => this.toggleDetailsPanel(false));
 
-    // Device View Mode Switcher: macOS vs iPhone 16 Pro
-    this.elements.btnMacView.addEventListener('click', () => this.setDeviceMode('macos'));
-    this.elements.btnIphoneView.addEventListener('click', () => this.setDeviceMode('iphone'));
+    // Clear Conversation button
+    const clearBtn = document.getElementById('btnClearConvo');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        if (confirm('Clear tickets and start fresh?')) {
+          this.clearConversation();
+          this.toggleDetailsPanel(false);
+        }
+      });
+    }
 
-    // iMessage Blue / SMS Green toggle
-    this.elements.btnToggleMsgType.addEventListener('click', () => this.toggleMessageType());
+    // Load Sample Ticket button (matches screenshot 2424)
+    const sampleBtn = document.getElementById('btnLoadSample');
+    if (sampleBtn) {
+      sampleBtn.addEventListener('click', () => {
+        this.loadSampleTicket();
+        this.toggleDetailsPanel(false);
+      });
+    }
 
-    // Sound FX toggle
-    this.elements.btnSoundToggle.addEventListener('click', () => this.toggleSound());
+    // Call button
+    const callBtn = document.getElementById('btnAudioCall');
+    if (callBtn) {
+      callBtn.addEventListener('click', () => {
+        soundEngine.playTapbackPop();
+        alert('Calling 4000...');
+      });
+    }
 
-    // Theme (Dark / Light) toggle
-    this.elements.btnThemeToggle.addEventListener('click', () => this.toggleTheme());
-
-    // Dynamic Island interactive click
-    this.elements.dynamicIsland.addEventListener('click', () => {
-      this.elements.dynamicIsland.classList.toggle('expanded');
-    });
+    // Sidebar Edit button
+    const editBtn = document.getElementById('sidebarEditBtn');
+    if (editBtn) {
+      editBtn.addEventListener('click', () => {
+        soundEngine.playTapbackPop();
+      });
+    }
 
     // QuickLook Photo Lightbox close
     this.elements.quickLookModal.addEventListener('click', () => {
@@ -910,17 +961,8 @@ class AppleMessagesApp {
     // New Message button
     const handleNewMessage = () => {
       soundEngine.playTapbackPop();
-      const contactNames = this.conversations.map(c => c.name).join(', ');
-      const newContact = prompt(`New Conversation - Choose contact:\n(${contactNames})`, 'Sarah Jenkins');
-      if (newContact) {
-        const matched = this.conversations.find(c => c.name.toLowerCase().includes(newContact.toLowerCase()));
-        if (matched) {
-          this.switchConversation(matched.id);
-        }
-      }
+      this.switchConversation('4000');
     };
-    const btnNew = document.getElementById('btnNewMessage');
-    if (btnNew) btnNew.addEventListener('click', handleNewMessage);
     const btnNewMob = document.getElementById('btnNewMessageMobile');
     if (btnNewMob) btnNewMob.addEventListener('click', handleNewMessage);
 
@@ -928,93 +970,8 @@ class AppleMessagesApp {
     document.addEventListener('pointerdown', () => soundEngine.init(), { once: true });
   }
 
-  // --------------------------------------------------------------------------
-  // CLOCK
-  // --------------------------------------------------------------------------
-  startClock() {
-    const updateTime = () => {
-      const now = new Date();
-      let hours = now.getHours();
-      let mins = now.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12 || 12;
-      const formattedMins = mins < 10 ? `0${mins}` : mins;
-      const timeStr = `${hours}:${formattedMins} ${ampm}`;
-      const timeStrShort = `${hours}:${formattedMins}`;
-
-      if (this.elements.systemClock) this.elements.systemClock.textContent = timeStr;
-      if (this.elements.iosTime) this.elements.iosTime.textContent = timeStrShort;
-    };
-    updateTime();
-    setInterval(updateTime, 30000);
-  }
-
-  // --------------------------------------------------------------------------
-  // DEVICE & THEME CONTROLS
-  // --------------------------------------------------------------------------
-  setDeviceMode(mode) {
-    if (mode === 'macos') {
-      this.elements.body.classList.remove('iphone-mode');
-      this.elements.body.classList.add('macos-mode');
-      this.elements.btnMacView.classList.add('active');
-      this.elements.btnIphoneView.classList.remove('active');
-      this.elements.messagesBody.classList.remove('showing-chat');
-    } else {
-      this.elements.body.classList.remove('macos-mode');
-      this.elements.body.classList.add('iphone-mode');
-      this.elements.btnIphoneView.classList.add('active');
-      this.elements.btnMacView.classList.remove('active');
-      this.elements.messagesBody.classList.add('showing-chat');
-    }
-  }
-
-  toggleMessageType() {
-    if (this.currentMessageType === 'imessage') {
-      this.currentMessageType = 'sms';
-      this.elements.msgTypeLabel.textContent = 'Text Message (SMS)';
-      const dot = this.elements.btnToggleMsgType.querySelector('.type-indicator-dot');
-      dot.className = 'type-indicator-dot sms';
-      this.elements.messageInput.placeholder = 'Text Message';
-      this.elements.btnSendMessage.classList.add('sms');
-    } else {
-      this.currentMessageType = 'imessage';
-      this.elements.msgTypeLabel.textContent = 'iMessage';
-      const dot = this.elements.btnToggleMsgType.querySelector('.type-indicator-dot');
-      dot.className = 'type-indicator-dot imessage';
-      this.elements.messageInput.placeholder = 'iMessage';
-      this.elements.btnSendMessage.classList.remove('sms');
-    }
-  }
-
-  toggleSound() {
-    soundEngine.enabled = !soundEngine.enabled;
-    if (soundEngine.enabled) {
-      this.elements.btnSoundToggle.classList.add('active');
-      this.elements.soundIconOn.style.display = 'block';
-      this.elements.soundIconOff.style.display = 'none';
-      soundEngine.playTapbackPop();
-    } else {
-      this.elements.btnSoundToggle.classList.remove('active');
-      this.elements.soundIconOn.style.display = 'none';
-      this.elements.soundIconOff.style.display = 'block';
-    }
-  }
-
-  toggleTheme() {
-    if (this.elements.body.classList.contains('dark-mode')) {
-      this.elements.body.classList.remove('dark-mode');
-      this.elements.body.classList.add('light-mode');
-      this.elements.themeIconDark.style.display = 'none';
-      this.elements.themeIconLight.style.display = 'block';
-    } else {
-      this.elements.body.classList.remove('light-mode');
-      this.elements.body.classList.add('dark-mode');
-      this.elements.themeIconDark.style.display = 'block';
-      this.elements.themeIconLight.style.display = 'none';
-    }
-  }
-
   toggleDetailsPanel(forceState) {
+    if (!this.elements.detailsPanel) return;
     const isShowing = this.elements.detailsPanel.style.display !== 'none';
     const newState = forceState !== undefined ? forceState : !isShowing;
     this.elements.detailsPanel.style.display = newState ? 'flex' : 'none';
@@ -1029,8 +986,14 @@ class AppleMessagesApp {
   }
 
   renderPinnedSection() {
+    if (!this.elements.pinnedSection) return;
     const pinned = this.conversations.filter(c => c.isPinned);
     this.elements.pinnedSection.innerHTML = '';
+    if (pinned.length === 0) {
+      this.elements.pinnedSection.style.display = 'none';
+      return;
+    }
+    this.elements.pinnedSection.style.display = 'grid';
 
     pinned.forEach(convo => {
       const item = document.createElement('div');
@@ -1060,41 +1023,36 @@ class AppleMessagesApp {
 
     list.forEach(convo => {
       const lastMsg = convo.messages[convo.messages.length - 1];
-      let snippet = 'No messages yet';
+      let snippet = '';
       if (lastMsg) {
-        if (lastMsg.type === 'text') snippet = lastMsg.text;
+        if (lastMsg.type === 'text') snippet = lastMsg.text.replace(/\n+/g, ' ');
         else if (lastMsg.type === 'image') snippet = '📷 Photo';
-        else if (lastMsg.type === 'audio') snippet = '🎙️ Voice Memo (0:14)';
+        else if (lastMsg.type === 'audio') snippet = '🎙️ Voice Memo';
         else if (lastMsg.type === 'cash') snippet = `Cash: $${lastMsg.amount}.00`;
       }
 
       const item = document.createElement('div');
-      item.className = `convo-item ${convo.id === this.activeConvoId ? 'active' : ''} ${convo.unreadCount > 0 ? 'unread' : ''}`;
+      item.className = `convo-item ${convo.unreadCount > 0 ? 'unread' : ''}`;
       item.setAttribute('data-id', convo.id);
 
-      let avatarHtml = `<img src="${convo.avatar}" alt="${convo.name}" class="convo-avatar">`;
-      if (convo.isGroup && convo.groupAvatars) {
-        avatarHtml = `
-          <div class="group-avatar-double">
-            <img src="${convo.groupAvatars[0]}" alt="member">
-            <img src="${convo.groupAvatars[1]}" alt="member">
-          </div>
-        `;
-      }
-
       item.innerHTML = `
-        <div class="convo-unread-indicator"></div>
+        ${convo.unreadCount > 0 ? '<div class="convo-unread-indicator"></div>' : ''}
         <div class="convo-avatar-wrap">
-          ${avatarHtml}
+          <img src="${convo.avatar}" alt="${convo.name}" class="convo-avatar">
         </div>
         <div class="convo-details">
           <div class="convo-top-line">
             <span class="convo-name">${convo.name}</span>
-            <span class="convo-time">${convo.lastTime}</span>
+            <span class="convo-time">${convo.lastTime || ''}</span>
           </div>
           <div class="convo-bottom-line">
             <span class="convo-snippet">${snippet}</span>
           </div>
+        </div>
+        <div class="convo-chevron">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
         </div>
       `;
 
@@ -1128,42 +1086,44 @@ class AppleMessagesApp {
     if (!convo) return;
 
     // Header info
-    this.elements.activeContactAvatar.src = convo.avatar;
-    this.elements.activeContactName.textContent = convo.name;
-    this.elements.activeContactSubtitle.textContent = convo.isSMS ? 'SMS • Text Message' : 'iMessage';
-    this.elements.activePresenceDot.style.display = convo.isOnline ? 'block' : 'none';
+    if (this.elements.activeContactAvatar) this.elements.activeContactAvatar.src = convo.avatar;
+    if (this.elements.activeContactName) this.elements.activeContactName.textContent = convo.name;
+    if (this.elements.activeContactSubtitle) this.elements.activeContactSubtitle.textContent = convo.isSMS ? 'Text Message • SMS' : 'iMessage';
+    if (this.elements.activePresenceDot) this.elements.activePresenceDot.style.display = convo.isOnline ? 'block' : 'none';
 
     // Details panel info
-    this.elements.detailsAvatar.src = convo.avatar;
-    this.elements.detailsName.textContent = convo.name;
-    this.elements.detailsPhone.textContent = convo.phone;
+    if (this.elements.detailsAvatar) this.elements.detailsAvatar.src = convo.avatar;
+    if (this.elements.detailsName) this.elements.detailsName.textContent = convo.name;
+    if (this.elements.detailsPhone) this.elements.detailsPhone.textContent = convo.phone;
 
-    // Dynamic Island expanded avatar & name
-    const islandAvatar = document.querySelector('.island-avatar');
-    if (islandAvatar) islandAvatar.src = convo.avatar;
-    const islandName = document.querySelector('.island-name');
-    if (islandName) islandName.textContent = convo.name;
-
-    // Render messages
+    // Render messages (empty if convo.messages.length === 0)
     this.elements.messageStream.innerHTML = '';
 
-    // Date separator pill
-    const dateDiv = document.createElement('div');
-    dateDiv.className = 'date-separator';
-    dateDiv.textContent = `Today ${convo.lastTime || '9:41 AM'}`;
-    this.elements.messageStream.appendChild(dateDiv);
+    if (convo.messages.length > 0) {
+      let lastHeaderTime = 0;
+      convo.messages.forEach((msg, index) => {
+        const msgTime = msg.timestamp || Date.now();
+        // Insert date separator if first message or if >15 minutes since last separator
+        if (index === 0 || msgTime - lastHeaderTime > 15 * 60 * 1000) {
+          const dateDiv = document.createElement('div');
+          dateDiv.className = 'date-separator';
+          dateDiv.textContent = this.formatHeaderDate(msgTime);
+          this.elements.messageStream.appendChild(dateDiv);
+          lastHeaderTime = msgTime;
+        }
 
-    convo.messages.forEach((msg, index) => {
-      const isNextSameSender = index < convo.messages.length - 1 && convo.messages[index + 1].sender === msg.sender;
-      const isLastInGroup = !isNextSameSender;
-      const msgNode = this.createMessageNode(msg, isLastInGroup, convo);
-      this.elements.messageStream.appendChild(msgNode);
-    });
+        const isNextSameSender = index < convo.messages.length - 1 && convo.messages[index + 1].sender === msg.sender;
+        const isLastInGroup = !isNextSameSender;
+        const isVeryLastInConvo = index === convo.messages.length - 1;
+        const msgNode = this.createMessageNode(msg, isLastInGroup, isVeryLastInConvo, convo);
+        this.elements.messageStream.appendChild(msgNode);
+      });
+    }
 
     this.scrollToBottom();
   }
 
-  createMessageNode(msg, isLastInGroup, convo) {
+  createMessageNode(msg, isLastInGroup, isVeryLastInConvo, convo) {
     const isSent = msg.sender === 'me';
     const row = document.createElement('div');
     row.className = `message-row ${isSent ? 'sent' : 'received'} ${isLastInGroup ? 'last-in-group' : ''}`;
@@ -1200,6 +1160,8 @@ class AppleMessagesApp {
           </div>
         `;
         setTimeout(() => this.initInvisibleInkCanvas(bubble.querySelector('.invisible-ink-canvas')), 50);
+      } else if (msg.html) {
+        bubble.innerHTML = msg.html;
       } else {
         bubble.textContent = msg.text;
       }
@@ -1266,8 +1228,8 @@ class AppleMessagesApp {
 
     row.appendChild(rowInner);
 
-    // Delivered / Read status beneath last sent message
-    if (isSent && isLastInGroup && msg.status) {
+    // Delivered / Read status beneath last sent message ONLY if it is the very last message in the thread
+    if (isSent && isVeryLastInConvo && msg.status) {
       const statusDiv = document.createElement('div');
       statusDiv.className = 'message-status';
       statusDiv.textContent = msg.status;
@@ -1435,19 +1397,27 @@ class AppleMessagesApp {
     const convo = this.conversations.find(c => c.id === this.activeConvoId);
     if (!convo) return;
 
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const newMsg = {
       id: 'm_' + Date.now(),
       sender: 'me',
       type: 'text',
       text: text,
-      time: 'Just now',
+      time: timeStr,
+      timestamp: now.getTime(),
       status: 'Delivered',
       effect: effect,
-      isSMS: this.currentMessageType === 'sms'
+      isSMS: true
     };
 
     convo.messages.push(newMsg);
-    convo.lastTime = 'Just now';
+    convo.lastTime = timeStr;
+
+    // Save session data
+    this.saveSessionData();
 
     // Play iconic Apple Swoosh sound
     soundEngine.playSendSwoosh();
@@ -1460,7 +1430,7 @@ class AppleMessagesApp {
     this.renderActiveConversation();
     this.renderSidebar();
 
-    // Simulate contact typing & response
+    // Simulate contact typing & ticket response
     this.simulateIncomingResponse(convo, text);
   }
 
@@ -1468,18 +1438,24 @@ class AppleMessagesApp {
     const convo = this.conversations.find(c => c.id === this.activeConvoId);
     if (!convo) return;
 
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const newMsg = {
       id: 'm_' + Date.now(),
       sender: 'me',
       type: 'cash',
       amount: amount,
       memo: memo,
-      time: 'Just now',
+      time: timeStr,
+      timestamp: now.getTime(),
       status: 'Completed'
     };
 
     convo.messages.push(newMsg);
-    convo.lastTime = 'Just now';
+    convo.lastTime = timeStr;
+    this.saveSessionData();
     soundEngine.playSendSwoosh();
     this.renderActiveConversation();
     this.renderSidebar();
@@ -1494,17 +1470,23 @@ class AppleMessagesApp {
     const convo = this.conversations.find(c => c.id === this.activeConvoId);
     if (!convo) return;
 
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const newMsg = {
       id: 'm_' + Date.now(),
       sender: 'me',
       type: 'audio',
       duration: 8,
-      time: 'Just now',
+      time: timeStr,
+      timestamp: now.getTime(),
       status: 'Delivered'
     };
 
     convo.messages.push(newMsg);
-    convo.lastTime = 'Just now';
+    convo.lastTime = timeStr;
+    this.saveSessionData();
     soundEngine.playSendSwoosh();
     this.renderActiveConversation();
     this.renderSidebar();
@@ -1516,60 +1498,44 @@ class AppleMessagesApp {
   // SIMULATED TYPING & RECIPIENT REPLIES
   // --------------------------------------------------------------------------
   simulateIncomingResponse(convo, userText) {
-    // 1. Update status to "Read" after 1.2s
-    setTimeout(() => {
-      const lastMsg = convo.messages[convo.messages.length - 1];
-      if (lastMsg && lastMsg.sender === 'me') {
-        lastMsg.status = 'Read Just now';
-        this.renderActiveConversation();
-      }
-    }, 1200);
-
-    // 2. Show 3-dot typing indicator bubble after 1.8s
+    // 1. Show 3-dot typing indicator bubble after 400ms
     setTimeout(() => {
       this.showTypingIndicator();
-      if (this.elements.dynamicIsland) {
-        this.elements.dynamicIsland.classList.add('expanded');
-      }
-    }, 1800);
+    }, 400);
 
-    // 3. Receive message reply after 3.8s
+    // 2. Receive message reply after 1.2s
     setTimeout(() => {
       this.hideTypingIndicator();
-      if (this.elements.dynamicIsland) {
-        this.elements.dynamicIsland.classList.remove('expanded');
-      }
 
-      let replyText = "Sounds good! Can't wait 🙌";
-      if (convo.id === 'tim') {
-        replyText = "We are deeply committed to making the best products for our users. Have a great day!";
-      } else if (convo.id === 'alex') {
-        replyText = "I'll grab us a table outside! Bring your camera 📸";
-      } else if (convo.id === 'sarah') {
-        if (userText.toLowerCase().includes('coffee') || userText.toLowerCase().includes('cash')) {
-          replyText = "Thanks for sending that over! I'll order our drinks ahead on the app ☕";
-        } else {
-          replyText = "Awesome! Let's hit the trail early before it gets too sunny ☀️🌲";
-        }
-      }
+      const ticket = this.generateRtecTicket(userText);
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
       const incomingMsg = {
         id: 'm_' + Date.now(),
         sender: convo.id,
         type: 'text',
-        text: replyText,
-        time: 'Just now'
+        text: ticket.textContent,
+        html: ticket.htmlContent,
+        time: timeStr,
+        timestamp: now.getTime(),
+        isSMS: true,
+        isTicket: true
       };
 
       convo.messages.push(incomingMsg);
-      convo.lastTime = 'Just now';
+      convo.lastTime = timeStr;
+
+      // Save session data
+      this.saveSessionData();
 
       // Play authentic Apple Note/Ding sound
       soundEngine.playReceivedChime();
 
       this.renderActiveConversation();
       this.renderSidebar();
-    }, 3800);
+    }, 1200);
   }
 
   showTypingIndicator() {

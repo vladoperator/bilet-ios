@@ -510,15 +510,17 @@ class BiletStorageManager {
 }
 
 const AVATAR_4000 = './assets/avatar_4000.svg';
-const AVATAR_ADMIN = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="%230A84FF"/><stop offset="100%" stop-color="%230055D4"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(%23g)"/><path d="M50 22 C37 22 28 29 28 41 C28 60 46 73 50 76 C54 73 72 60 72 41 C72 29 63 22 50 22 Z M50 34 C54.4 34 58 37.6 58 42 C58 45.4 55.9 48.3 52.8 49.4 L53 58 C53 59.7 51.7 61 50 61 C48.3 61 47 59.7 47 58 L47.2 49.4 C44.1 48.3 42 45.4 42 42 C42 37.6 45.6 34 50 34 Z" fill="white"/></svg>`;
+const AVATAR_ADMIN = './assets/avatar_admin.svg';
 
 // ============================================================================
-// 3.5 BILET AUTH & INVITES DATABASE MANAGER (LocalStorage & Device Tracking)
+// 3.5 BILET AUTH & CLOUD DATABASE MANAGER (Real-Time Worldwide Sync & Device Tracking)
 // ============================================================================
 class BiletAuthManager {
   constructor() {
+    this.cloudApiUrl = 'https://api.restful-api.dev/objects/ff808181a09d98f701a0e37dc9cb262c';
     this.dbKey = 'bilet_auth_db_v1';
     this.sessionKey = 'bilet_user_session_v1';
+    this.adminTokenKey = 'bilet_admin_device_token_v1';
     this.adminCode = 'ADMIN4000X';
     this.initialCodes = [
       'NU84YXMD97',
@@ -557,6 +559,43 @@ class BiletAuthManager {
       }
     } catch (e) {
       console.warn('Auth DB init error', e);
+    }
+  }
+
+  async fetchCloudDB() {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(this.cloudApiUrl, { signal: controller.signal });
+      clearTimeout(tid);
+      if (res.ok) {
+        const json = await res.json();
+        if (json && json.data) {
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn('Cloud DB fetch failed, falling back to local', e);
+    }
+    return null;
+  }
+
+  async saveCloudDB(dataObj) {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 4500);
+      await fetch(this.cloudApiUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'bilet_cloud_db',
+          data: dataObj
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(tid);
+    } catch (e) {
+      console.warn('Cloud DB save failed', e);
     }
   }
 
@@ -609,18 +648,43 @@ class BiletAuthManager {
     if (/iPhone/i.test(ua)) {
       const w = window.screen.width;
       const h = window.screen.height;
+      const dpr = window.devicePixelRatio || 1;
       let model = 'iPhone';
-      if ((w === 440 && h === 956) || (w === 956 && h === 440)) model = 'iPhone 16 Pro Max';
-      else if ((w === 402 && h === 874) || (w === 874 && h === 402)) model = 'iPhone 16 Pro';
-      else if ((w === 430 && h === 932) || (w === 932 && h === 430)) model = 'iPhone 15 / 16 Plus / Pro Max';
-      else if ((w === 393 && h === 852) || (w === 852 && h === 393)) model = 'iPhone 15 / 16 / 14 Pro';
-      else if ((w === 390 && h === 844) || (w === 844 && h === 390)) model = 'iPhone 12 / 13 / 14';
-      else if ((w === 414 && h === 896) || (w === 896 && h === 414)) model = 'iPhone 11 / XR / XS Max';
-      else if ((w === 375 && h === 812) || (w === 812 && h === 375)) model = 'iPhone X / XS / 11 Pro';
-      else if ((w === 375 && h === 667) || (w === 667 && h === 375)) model = 'iPhone SE / 8 / 7';
-      
-      const iosMatch = ua.match(/OS (\d+[_.]\d+)/);
-      const iosVer = iosMatch ? `iOS ${iosMatch[1].replace('_', '.')}` : 'iOS';
+
+      // Pixel-perfect iPhone Screen Dimension Identification
+      if ((w === 440 && h === 956) || (w === 956 && h === 440)) {
+        model = 'iPhone 16 Pro Max';
+      } else if ((w === 402 && h === 874) || (w === 874 && h === 402)) {
+        model = 'iPhone 16 Pro';
+      } else if ((w === 430 && h === 932) || (w === 932 && h === 430)) {
+        model = 'iPhone 15 Pro Max / 16 Plus';
+      } else if ((w === 428 && h === 926) || (w === 926 && h === 428)) {
+        // iPhone 13 Pro Max (and 14 Plus / 12 Pro Max)
+        model = 'iPhone 13 Pro Max';
+      } else if ((w === 393 && h === 852) || (w === 852 && h === 393)) {
+        model = 'iPhone 15 / 16 / 14 Pro';
+      } else if ((w === 390 && h === 844) || (w === 844 && h === 390)) {
+        model = 'iPhone 13 / 14 / 12';
+      } else if ((w === 414 && h === 896) || (w === 896 && h === 414)) {
+        model = dpr >= 3 ? 'iPhone 11 Pro Max / XS Max' : 'iPhone 11 / XR';
+      } else if ((w === 375 && h === 812) || (w === 812 && h === 375)) {
+        model = 'iPhone 13 mini / X / 11 Pro';
+      } else if ((w === 375 && h === 667) || (w === 667 && h === 375)) {
+        model = 'iPhone SE (3rd Gen) / 8';
+      } else {
+        model = 'iPhone';
+      }
+
+      // Accurate Safari / iOS Version parser
+      const verMatch = ua.match(/Version\/(\d+(\.\d+)*)/i);
+      const osMatch = ua.match(/OS (\d+([_.]\d+)*)/i);
+      let iosVer = 'iOS';
+      if (verMatch) {
+        iosVer = `iOS ${verMatch[1]}`;
+      } else if (osMatch) {
+        iosVer = `iOS ${osMatch[1].replace(/_/g, '.')}`;
+      }
+
       return `${model} (${iosVer})`;
     }
     
@@ -679,43 +743,73 @@ class BiletAuthManager {
       return { success: false, error: 'Please enter a valid 10-character code.' };
     }
 
-    const db = this.getDatabase();
     const device = this.detectDevice();
     const ip = await this.fetchIP();
     const timestamp = new Date().toISOString();
 
-    // Check if it's the Admin Code
-    if (code === db.adminCode) {
-      if (db.adminRedeemed) {
-        // Only allow if current device is the already-redeemed admin
-        const currentSession = this.getSession();
-        if (currentSession && currentSession.role === 'admin' && currentSession.code === code) {
+    // 1. Fetch live cloud database state across all devices worldwide
+    const cloudDB = await this.fetchCloudDB();
+    const localDB = this.getDatabase();
+
+    const isCloudAdminRedeemed = cloudDB ? !!cloudDB.adminRedeemed : localDB.adminRedeemed;
+    const cloudRedeemedCodes = cloudDB && Array.isArray(cloudDB.redeemedCodes) ? cloudDB.redeemedCodes : [];
+    const cloudRedemptions = cloudDB && Array.isArray(cloudDB.redemptions) ? cloudDB.redemptions : (localDB.redemptions || []);
+    const customCodes = cloudDB && Array.isArray(cloudDB.customCodes) ? cloudDB.customCodes : [];
+
+    // =========================================================================
+    // ADMIN CODE VERIFICATION (STRICT SINGLE-USE ACROSS ALL DEVICES WORLDWIDE)
+    // =========================================================================
+    if (code === this.adminCode) {
+      let currentToken = '';
+      try {
+        currentToken = localStorage.getItem(this.adminTokenKey) || '';
+      } catch (e) {}
+
+      // If already redeemed in the cloud:
+      if (isCloudAdminRedeemed) {
+        // Only allow if this device already holds the active admin session token
+        if (cloudDB && cloudDB.adminSessionToken && currentToken === cloudDB.adminSessionToken) {
           return { success: true, role: 'admin', code: code };
         }
-        return { success: false, error: 'This Admin Code has already been redeemed.' };
+        return { success: false, error: 'This Admin Code has already been redeemed on another device.' };
       }
 
-      // First-time redemption of Admin Code
-      db.adminRedeemed = true;
-      db.adminDeviceInfo = {
-        code: code,
-        redeemedAt: timestamp,
-        ip: ip,
-        device: device
-      };
-      db.redemptions.unshift({
+      // FIRST-TIME REDEMPTION OF ADMIN CODE: Lock it permanently worldwide!
+      const newAdminToken = 'adm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+      try {
+        localStorage.setItem(this.adminTokenKey, newAdminToken);
+      } catch (e) {}
+
+      const newRedemption = {
         code: code,
         role: 'admin',
         redeemedAt: timestamp,
         ip: ip,
         device: device
-      });
-      this.saveDatabase(db);
+      };
+
+      const updatedCloudData = {
+        adminRedeemed: true,
+        adminSessionToken: newAdminToken,
+        redeemedCodes: cloudRedeemedCodes,
+        redemptions: [newRedemption, ...cloudRedemptions],
+        customCodes: customCodes
+      };
+
+      // Save to cloud immediately so NO OTHER DEVICE CAN EVER REDEEM IT
+      await this.saveCloudDB(updatedCloudData);
+
+      // Save local DB and local session
+      localDB.adminRedeemed = true;
+      localDB.adminDeviceInfo = newRedemption;
+      localDB.redemptions = [newRedemption, ...localDB.redemptions];
+      this.saveDatabase(localDB);
 
       const session = {
         authenticated: true,
         code: code,
         role: 'admin',
+        adminToken: newAdminToken,
         redeemedAt: timestamp,
         ip: ip,
         device: device
@@ -724,30 +818,51 @@ class BiletAuthManager {
       return { success: true, role: 'admin', code: code };
     }
 
-    // Check in regular invites
-    const invite = db.invites.find(i => i.code === code);
-    if (!invite) {
+    // =========================================================================
+    // REGULAR INVITE CODE VERIFICATION (STRICT SINGLE-USE ACROSS ALL DEVICES)
+    // =========================================================================
+    const allValidCodes = [...this.initialCodes, ...customCodes];
+    if (!allValidCodes.includes(code)) {
       return { success: false, error: 'Invalid invite code. Access denied.' };
     }
 
-    if (invite.status === 'redeemed') {
+    // Check if code was already redeemed on ANY device worldwide
+    if (cloudRedeemedCodes.includes(code)) {
       return { success: false, error: 'This invite code has already been redeemed.' };
     }
 
-    // Redeem invite
-    invite.status = 'redeemed';
-    invite.redeemedAt = timestamp;
-    invite.ip = ip;
-    invite.device = device;
-
-    db.redemptions.unshift({
+    // Code is valid and unused: Mark as redeemed in cloud!
+    const newRedemption = {
       code: code,
       role: 'user',
       redeemedAt: timestamp,
       ip: ip,
       device: device
-    });
-    this.saveDatabase(db);
+    };
+
+    const updatedRedeemedCodes = [...cloudRedeemedCodes, code];
+    const updatedRedemptions = [newRedemption, ...cloudRedemptions];
+
+    const updatedCloudData = {
+      adminRedeemed: isCloudAdminRedeemed,
+      adminSessionToken: cloudDB ? cloudDB.adminSessionToken : '',
+      redeemedCodes: updatedRedeemedCodes,
+      redemptions: updatedRedemptions,
+      customCodes: customCodes
+    };
+
+    await this.saveCloudDB(updatedCloudData);
+
+    // Save local state
+    const localInvite = localDB.invites.find(i => i.code === code);
+    if (localInvite) {
+      localInvite.status = 'redeemed';
+      localInvite.redeemedAt = timestamp;
+      localInvite.ip = ip;
+      localInvite.device = device;
+    }
+    localDB.redemptions = [newRedemption, ...localDB.redemptions];
+    this.saveDatabase(localDB);
 
     const session = {
       authenticated: true,
@@ -761,8 +876,7 @@ class BiletAuthManager {
     return { success: true, role: 'user', code: code };
   }
 
-  generateInvites(count) {
-    const db = this.getDatabase();
+  async generateInvites(count) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const newCodes = [];
     const num = Math.max(1, Math.min(100, parseInt(count, 10) || 5));
@@ -775,7 +889,22 @@ class BiletAuthManager {
         code += chars[array[j] % chars.length];
       }
       newCodes.push(code);
-      db.invites.unshift({
+    }
+
+    // Sync new codes to cloud database so all devices recognize them
+    const cloudDB = await this.fetchCloudDB();
+    const existingCustom = cloudDB && Array.isArray(cloudDB.customCodes) ? cloudDB.customCodes : [];
+    const updatedCustom = [...newCodes, ...existingCustom];
+
+    if (cloudDB) {
+      cloudDB.customCodes = updatedCustom;
+      await this.saveCloudDB(cloudDB);
+    }
+
+    // Update local database
+    const localDB = this.getDatabase();
+    newCodes.forEach(code => {
+      localDB.invites.unshift({
         code: code,
         status: 'available',
         createdAt: new Date().toISOString(),
@@ -783,9 +912,9 @@ class BiletAuthManager {
         ip: null,
         device: null
       });
-    }
+    });
+    this.saveDatabase(localDB);
 
-    this.saveDatabase(db);
     return newCodes;
   }
 }
@@ -2209,13 +2338,37 @@ class AppleMessagesApp {
   // --------------------------------------------------------------------------
   // ADMIN DASHBOARD CONTROLLER METHODS
   // --------------------------------------------------------------------------
-  renderAdminDashboard() {
+  async renderAdminDashboard() {
     if (!this.elements.adminDashboardView) return;
-    const db = this.authManager.getDatabase();
-    const invites = db.invites || [];
-    const redemptions = db.redemptions || [];
 
-    const redeemedCount = invites.filter(i => i.status === 'redeemed').length + (db.adminRedeemed ? 1 : 0);
+    // 1. Initial immediate render from local database
+    const localDB = this.authManager.getDatabase();
+    this.updateAdminDashboardUI(localDB.invites || [], localDB.redemptions || [], localDB.adminRedeemed);
+
+    // 2. Fetch live real-time cloud data from all devices worldwide
+    try {
+      const cloudData = await this.authManager.fetchCloudDB();
+      if (cloudData) {
+        const cloudRedemptions = Array.isArray(cloudData.redemptions) ? cloudData.redemptions : [];
+        const cloudRedeemedCodes = Array.isArray(cloudData.redeemedCodes) ? cloudData.redeemedCodes : [];
+        const customCodes = Array.isArray(cloudData.customCodes) ? cloudData.customCodes : [];
+
+        // Combine all codes: initial 10 + any admin generated custom codes
+        const allCodeStrings = [...this.authManager.initialCodes, ...customCodes];
+        const combinedInvites = allCodeStrings.map(c => ({
+          code: c,
+          status: cloudRedeemedCodes.includes(c) ? 'redeemed' : 'available'
+        }));
+
+        this.updateAdminDashboardUI(combinedInvites, cloudRedemptions, !!cloudData.adminRedeemed);
+      }
+    } catch (e) {
+      console.warn('Live cloud dashboard refresh error', e);
+    }
+  }
+
+  updateAdminDashboardUI(invites, redemptions, isAdminRedeemed) {
+    const redeemedCount = invites.filter(i => i.status === 'redeemed').length + (isAdminRedeemed ? 1 : 0);
     const availableCount = invites.filter(i => i.status === 'available').length;
     const totalCount = invites.length + 1; // includes admin code
 
@@ -2314,14 +2467,14 @@ class AppleMessagesApp {
     }
   }
 
-  handleGenerateInvitesConfirm() {
+  async handleGenerateInvitesConfirm() {
     let count = 5;
     const activeChip = document.querySelector('.count-chip.active');
     if (activeChip) count = parseInt(activeChip.getAttribute('data-count'), 10) || 5;
     const customVal = parseInt(this.elements.customGenerateCount ? this.elements.customGenerateCount.value : '', 10);
     if (!isNaN(customVal) && customVal > 0) count = customVal;
 
-    this.authManager.generateInvites(count);
+    await this.authManager.generateInvites(count);
     soundEngine.playReceivedChime();
     this.closeGenerateModal();
     this.renderAdminDashboard();

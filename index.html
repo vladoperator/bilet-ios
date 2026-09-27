@@ -17,6 +17,42 @@
   <!-- Fullscreen Special Effects Canvas Layer -->
   <canvas id="effectsCanvas" class="effects-canvas"></canvas>
 
+  <!-- Private Access Gate Overlay -->
+  <div class="private-access-overlay" id="privateAccessOverlay">
+    <div class="private-access-card" id="privateAccessCard">
+      <div class="access-icon-wrap">
+        <svg class="access-shield-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="3" ry="3"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h2 class="access-title">Private Access</h2>
+      <p class="access-subtitle">Enter your 10-character invite code to access the app.</p>
+      
+      <div class="access-form">
+        <div class="access-input-container">
+          <input 
+            type="text" 
+            id="accessCodeInput" 
+            class="access-code-input" 
+            placeholder="XXXXXXXXXX" 
+            maxlength="10" 
+            autocomplete="off" 
+            spellcheck="false" 
+            autofocus
+          >
+          <span class="access-input-counter" id="accessInputCounter">0/10</span>
+        </div>
+        <div class="access-error-msg" id="accessErrorMsg" style="display: none;"></div>
+        <button type="button" class="access-submit-btn" id="btnUnlockAccess">
+          <span class="btn-text">Unlock Access</span>
+          <div class="access-spinner" id="accessSpinner" style="display: none;"></div>
+        </button>
+      </div>
+      <div class="access-footer-hint">Protected Apple Messages Experience</div>
+    </div>
+  </div>
+
   <!-- App Viewport Container (Mobile Native Layout) -->
   <main class="app-viewport" id="appViewport">
     <div class="messages-window" id="messagesWindow">
@@ -117,8 +153,76 @@
             </div>
           </div>
 
+          <!-- ADMIN DASHBOARD VIEW (Shown when admin_panel conversation is active) -->
+          <div class="admin-dashboard-view" id="adminDashboardView" style="display: none;">
+            <div class="admin-dashboard-header">
+              <div class="admin-badge-row">
+                <span class="admin-status-indicator"></span>
+                <span class="admin-session-title">Admin Control Center</span>
+              </div>
+              <h2 class="admin-main-heading">Invite Codes & VIP Access</h2>
+              <p class="admin-subtext">Manage active invites, track redeemed devices, IPs, and generate new invite passes.</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="admin-stats-grid">
+              <div class="admin-stat-card">
+                <span class="stat-number" id="statTotalInvites">0</span>
+                <span class="stat-label">Total Invites</span>
+              </div>
+              <div class="admin-stat-card stat-highlight">
+                <span class="stat-number" id="statRedeemedInvites">0</span>
+                <span class="stat-label">Redeemed</span>
+              </div>
+              <div class="admin-stat-card">
+                <span class="stat-number" id="statAvailableInvites">0</span>
+                <span class="stat-label">Available</span>
+              </div>
+            </div>
+
+            <!-- Action Toolbar -->
+            <div class="admin-actions-bar">
+              <button type="button" class="admin-action-btn primary" id="btnOpenGenerateModal">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Generate Invites</span>
+              </button>
+              <button type="button" class="admin-action-btn secondary" id="btnCopyAllUnused">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>Copy All Available</span>
+              </button>
+            </div>
+
+            <!-- Section 1: Redeemed Invites (VIPs & Devices) -->
+            <div class="admin-section">
+              <div class="admin-section-header">
+                <h3>Redeemed VIP Passes</h3>
+                <span class="section-count-badge" id="badgeRedeemedCount">0</span>
+              </div>
+              <div class="admin-redeemed-list" id="adminRedeemedList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Section 2: Available Unused Invites -->
+            <div class="admin-section">
+              <div class="admin-section-header">
+                <h3>Available Unused Invites</h3>
+                <span class="section-count-badge" id="badgeAvailableCount">0</span>
+              </div>
+              <div class="admin-available-list" id="adminAvailableList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+
           <!-- Apple Messages Input Bar -->
-          <footer class="chat-input-bar-wrap">
+          <footer class="chat-input-bar-wrap" id="chatInputBarWrap">
             <!-- Floating iOS 17/18 App Drawer Menu -->
             <div class="apple-apps-drawer" id="appsDrawer" style="display: none;">
               <div class="drawer-header-pill"></div>
@@ -454,6 +558,44 @@
       <span class="sticker-item" draggable="true" data-emoji="🤩">🤩</span>
       <span class="sticker-item" draggable="true" data-emoji="💯">💯</span>
       <span class="sticker-item" draggable="true" data-emoji="👏">👏</span>
+    </div>
+  </div>
+
+  <!-- ADMIN GENERATE INVITES MODAL -->
+  <div class="admin-modal-backdrop" id="adminGenerateModal" style="display: none;">
+    <div class="admin-modal-sheet">
+      <div class="admin-modal-header">
+        <div class="admin-modal-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+            <line x1="8" y1="9" x2="16" y2="9"></line>
+            <line x1="8" y1="13" x2="16" y2="13"></line>
+            <line x1="8" y1="17" x2="12" y2="17"></line>
+          </svg>
+        </div>
+        <h3 class="admin-modal-title">Generate Invite Codes</h3>
+        <p class="admin-modal-desc">Create unique 10-character uppercase alphanumeric passes for your friends.</p>
+      </div>
+
+      <div class="admin-modal-body">
+        <label class="modal-input-label">How many invites do you want to generate?</label>
+        
+        <div class="admin-count-chips">
+          <button type="button" class="count-chip" data-count="1">1</button>
+          <button type="button" class="count-chip active" data-count="5">5</button>
+          <button type="button" class="count-chip" data-count="10">10</button>
+          <button type="button" class="count-chip" data-count="20">20</button>
+        </div>
+
+        <div class="custom-count-input-wrap">
+          <input type="number" id="customGenerateCount" min="1" max="100" value="5" placeholder="Or enter custom number">
+        </div>
+      </div>
+
+      <div class="admin-modal-actions">
+        <button type="button" class="admin-modal-btn cancel" id="btnCancelGenerate">Cancel</button>
+        <button type="button" class="admin-modal-btn confirm" id="btnConfirmGenerate">Generate Codes</button>
+      </div>
     </div>
   </div>
 

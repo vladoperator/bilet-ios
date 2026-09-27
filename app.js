@@ -510,6 +510,285 @@ class BiletStorageManager {
 }
 
 const AVATAR_4000 = './assets/avatar_4000.svg';
+const AVATAR_ADMIN = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="%230A84FF"/><stop offset="100%" stop-color="%230055D4"/></linearGradient></defs><circle cx="50" cy="50" r="50" fill="url(%23g)"/><path d="M50 22 C37 22 28 29 28 41 C28 60 46 73 50 76 C54 73 72 60 72 41 C72 29 63 22 50 22 Z M50 34 C54.4 34 58 37.6 58 42 C58 45.4 55.9 48.3 52.8 49.4 L53 58 C53 59.7 51.7 61 50 61 C48.3 61 47 59.7 47 58 L47.2 49.4 C44.1 48.3 42 45.4 42 42 C42 37.6 45.6 34 50 34 Z" fill="white"/></svg>`;
+
+// ============================================================================
+// 3.5 BILET AUTH & INVITES DATABASE MANAGER (LocalStorage & Device Tracking)
+// ============================================================================
+class BiletAuthManager {
+  constructor() {
+    this.dbKey = 'bilet_auth_db_v1';
+    this.sessionKey = 'bilet_user_session_v1';
+    this.adminCode = 'ADMIN4000X';
+    this.initialCodes = [
+      'NU84YXMD97',
+      '84XQLRT7PT',
+      'CAPP4R87WJ',
+      'PPBXF5YLVE',
+      '5JKBDRBUE4',
+      '9H7MFAKKA8',
+      'C9CUKPF6WC',
+      'LS945S9UFP',
+      'SZLWFQ2BRP',
+      'AMKUZ83M4P'
+    ];
+    this.initDatabase();
+  }
+
+  initDatabase() {
+    try {
+      const raw = localStorage.getItem(this.dbKey);
+      if (!raw) {
+        const initialDB = {
+          adminCode: this.adminCode,
+          adminRedeemed: false,
+          adminDeviceInfo: null,
+          invites: this.initialCodes.map(code => ({
+            code: code,
+            status: 'available',
+            createdAt: new Date().toISOString(),
+            redeemedAt: null,
+            ip: null,
+            device: null
+          })),
+          redemptions: []
+        };
+        localStorage.setItem(this.dbKey, JSON.stringify(initialDB));
+      }
+    } catch (e) {
+      console.warn('Auth DB init error', e);
+    }
+  }
+
+  getDatabase() {
+    try {
+      const raw = localStorage.getItem(this.dbKey);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.warn('Error reading Auth DB', e);
+    }
+    return { adminCode: this.adminCode, adminRedeemed: false, invites: [], redemptions: [] };
+  }
+
+  saveDatabase(db) {
+    try {
+      localStorage.setItem(this.dbKey, JSON.stringify(db));
+    } catch (e) {
+      console.warn('Error saving Auth DB', e);
+    }
+  }
+
+  getSession() {
+    try {
+      const raw = localStorage.getItem(this.sessionKey);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
+  setSession(session) {
+    try {
+      localStorage.setItem(this.sessionKey, JSON.stringify(session));
+    } catch (e) {}
+  }
+
+  isAuthenticated() {
+    const session = this.getSession();
+    return !!(session && session.authenticated && session.code);
+  }
+
+  isAdmin() {
+    const session = this.getSession();
+    return !!(session && session.authenticated && session.role === 'admin');
+  }
+
+  detectDevice() {
+    const ua = navigator.userAgent || '';
+    
+    // Check iPhone
+    if (/iPhone/i.test(ua)) {
+      const w = window.screen.width;
+      const h = window.screen.height;
+      let model = 'iPhone';
+      if ((w === 440 && h === 956) || (w === 956 && h === 440)) model = 'iPhone 16 Pro Max';
+      else if ((w === 402 && h === 874) || (w === 874 && h === 402)) model = 'iPhone 16 Pro';
+      else if ((w === 430 && h === 932) || (w === 932 && h === 430)) model = 'iPhone 15 / 16 Plus / Pro Max';
+      else if ((w === 393 && h === 852) || (w === 852 && h === 393)) model = 'iPhone 15 / 16 / 14 Pro';
+      else if ((w === 390 && h === 844) || (w === 844 && h === 390)) model = 'iPhone 12 / 13 / 14';
+      else if ((w === 414 && h === 896) || (w === 896 && h === 414)) model = 'iPhone 11 / XR / XS Max';
+      else if ((w === 375 && h === 812) || (w === 812 && h === 375)) model = 'iPhone X / XS / 11 Pro';
+      else if ((w === 375 && h === 667) || (w === 667 && h === 375)) model = 'iPhone SE / 8 / 7';
+      
+      const iosMatch = ua.match(/OS (\d+[_.]\d+)/);
+      const iosVer = iosMatch ? `iOS ${iosMatch[1].replace('_', '.')}` : 'iOS';
+      return `${model} (${iosVer})`;
+    }
+    
+    // Check iPad
+    if (/iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+      return 'iPad (iPadOS)';
+    }
+    
+    // Check Mac
+    if (/Macintosh/i.test(ua)) {
+      return 'MacBook / Mac (macOS)';
+    }
+    
+    // Check Android
+    if (/Android/i.test(ua)) {
+      const androidMatch = ua.match(/Android\s+([\d.]+)/);
+      const version = androidMatch ? `Android ${androidMatch[1]}` : 'Android';
+      const deviceMatch = ua.match(/;\s*([^;]+)\s*Build/);
+      const model = deviceMatch ? deviceMatch[1].trim() : 'Android Device';
+      return `${model} (${version})`;
+    }
+    
+    // Check Windows
+    if (/Windows/i.test(ua)) {
+      return 'Windows PC';
+    }
+
+    return 'Web Browser Device';
+  }
+
+  async fetchIP() {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ip) return data.ip;
+      }
+    } catch (e) {
+      try {
+        const res2 = await fetch('https://icanhazip.com');
+        if (res2.ok) {
+          const text = await res2.text();
+          if (text) return text.trim();
+        }
+      } catch (err) {}
+    }
+    return '127.0.0.1 (Local / Private)';
+  }
+
+  async redeemCode(inputCode) {
+    const code = (inputCode || '').trim().toUpperCase();
+    if (!code || code.length !== 10) {
+      return { success: false, error: 'Please enter a valid 10-character code.' };
+    }
+
+    const db = this.getDatabase();
+    const device = this.detectDevice();
+    const ip = await this.fetchIP();
+    const timestamp = new Date().toISOString();
+
+    // Check if it's the Admin Code
+    if (code === db.adminCode) {
+      if (db.adminRedeemed) {
+        // Only allow if current device is the already-redeemed admin
+        const currentSession = this.getSession();
+        if (currentSession && currentSession.role === 'admin' && currentSession.code === code) {
+          return { success: true, role: 'admin', code: code };
+        }
+        return { success: false, error: 'This Admin Code has already been redeemed.' };
+      }
+
+      // First-time redemption of Admin Code
+      db.adminRedeemed = true;
+      db.adminDeviceInfo = {
+        code: code,
+        redeemedAt: timestamp,
+        ip: ip,
+        device: device
+      };
+      db.redemptions.unshift({
+        code: code,
+        role: 'admin',
+        redeemedAt: timestamp,
+        ip: ip,
+        device: device
+      });
+      this.saveDatabase(db);
+
+      const session = {
+        authenticated: true,
+        code: code,
+        role: 'admin',
+        redeemedAt: timestamp,
+        ip: ip,
+        device: device
+      };
+      this.setSession(session);
+      return { success: true, role: 'admin', code: code };
+    }
+
+    // Check in regular invites
+    const invite = db.invites.find(i => i.code === code);
+    if (!invite) {
+      return { success: false, error: 'Invalid invite code. Access denied.' };
+    }
+
+    if (invite.status === 'redeemed') {
+      return { success: false, error: 'This invite code has already been redeemed.' };
+    }
+
+    // Redeem invite
+    invite.status = 'redeemed';
+    invite.redeemedAt = timestamp;
+    invite.ip = ip;
+    invite.device = device;
+
+    db.redemptions.unshift({
+      code: code,
+      role: 'user',
+      redeemedAt: timestamp,
+      ip: ip,
+      device: device
+    });
+    this.saveDatabase(db);
+
+    const session = {
+      authenticated: true,
+      code: code,
+      role: 'user',
+      redeemedAt: timestamp,
+      ip: ip,
+      device: device
+    };
+    this.setSession(session);
+    return { success: true, role: 'user', code: code };
+  }
+
+  generateInvites(count) {
+    const db = this.getDatabase();
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const newCodes = [];
+    const num = Math.max(1, Math.min(100, parseInt(count, 10) || 5));
+
+    for (let i = 0; i < num; i++) {
+      let code = '';
+      const array = new Uint32Array(10);
+      window.crypto.getRandomValues(array);
+      for (let j = 0; j < 10; j++) {
+        code += chars[array[j] % chars.length];
+      }
+      newCodes.push(code);
+      db.invites.unshift({
+        code: code,
+        status: 'available',
+        createdAt: new Date().toISOString(),
+        redeemedAt: null,
+        ip: null,
+        device: null
+      });
+    }
+
+    this.saveDatabase(db);
+    return newCodes;
+  }
+}
 
 const CONVERSATIONS_DATA = [
   {
@@ -532,6 +811,7 @@ const CONVERSATIONS_DATA = [
 class AppleMessagesApp {
   constructor() {
     this.storage = new BiletStorageManager();
+    this.authManager = new BiletAuthManager();
     this.conversations = JSON.parse(JSON.stringify(CONVERSATIONS_DATA));
     this.activeConvoId = '4000';
     this.currentMessageType = 'sms'; // Default SMS mode
@@ -549,6 +829,7 @@ class AppleMessagesApp {
       conversationsList: document.getElementById('conversationsList'),
       messageStream: document.getElementById('messageStream'),
       messageStreamContainer: document.getElementById('messageStreamContainer'),
+      chatInputBarWrap: document.getElementById('chatInputBarWrap'),
       messageInput: document.getElementById('messageInput'),
       btnSendMessage: document.getElementById('btnSendMessage'),
       btnMicAction: document.getElementById('btnMicAction'),
@@ -574,7 +855,32 @@ class AppleMessagesApp {
       messagesBody: document.querySelector('.messages-body'),
       conversationsSidebar: document.getElementById('conversationsSidebar'),
       searchInput: document.getElementById('searchInput'),
-      searchClearBtn: document.getElementById('searchClearBtn')
+      searchClearBtn: document.getElementById('searchClearBtn'),
+
+      // Private Access Elements
+      privateAccessOverlay: document.getElementById('privateAccessOverlay'),
+      privateAccessCard: document.getElementById('privateAccessCard'),
+      accessCodeInput: document.getElementById('accessCodeInput'),
+      accessInputCounter: document.getElementById('accessInputCounter'),
+      accessErrorMsg: document.getElementById('accessErrorMsg'),
+      btnUnlockAccess: document.getElementById('btnUnlockAccess'),
+      accessSpinner: document.getElementById('accessSpinner'),
+
+      // Admin Dashboard Elements
+      adminDashboardView: document.getElementById('adminDashboardView'),
+      statTotalInvites: document.getElementById('statTotalInvites'),
+      statRedeemedInvites: document.getElementById('statRedeemedInvites'),
+      statAvailableInvites: document.getElementById('statAvailableInvites'),
+      btnOpenGenerateModal: document.getElementById('btnOpenGenerateModal'),
+      btnCopyAllUnused: document.getElementById('btnCopyAllUnused'),
+      badgeRedeemedCount: document.getElementById('badgeRedeemedCount'),
+      badgeAvailableCount: document.getElementById('badgeAvailableCount'),
+      adminRedeemedList: document.getElementById('adminRedeemedList'),
+      adminAvailableList: document.getElementById('adminAvailableList'),
+      adminGenerateModal: document.getElementById('adminGenerateModal'),
+      customGenerateCount: document.getElementById('customGenerateCount'),
+      btnCancelGenerate: document.getElementById('btnCancelGenerate'),
+      btnConfirmGenerate: document.getElementById('btnConfirmGenerate')
     };
 
     // Canvas Special Effects
@@ -589,9 +895,130 @@ class AppleMessagesApp {
     if (this.elements.messagesBody) {
       this.elements.messagesBody.classList.add('showing-chat');
     }
+    this.checkAuthenticationState();
     this.bindEvents();
     this.renderSidebar();
     this.renderActiveConversation();
+  }
+
+  checkAuthenticationState() {
+    if (this.authManager.isAuthenticated()) {
+      if (this.elements.privateAccessOverlay) {
+        this.elements.privateAccessOverlay.style.display = 'none';
+      }
+      if (this.authManager.isAdmin()) {
+        this.ensureAdminConversation();
+      }
+    } else {
+      if (this.elements.privateAccessOverlay) {
+        this.elements.privateAccessOverlay.style.display = 'flex';
+        // Check for URL query param e.g. ?invite=CODE or ?code=CODE
+        const params = new URLSearchParams(window.location.search);
+        const inviteParam = (params.get('invite') || params.get('code') || '').toUpperCase().trim();
+        if (inviteParam && this.elements.accessCodeInput) {
+          this.elements.accessCodeInput.value = inviteParam;
+          if (this.elements.accessInputCounter) {
+            this.elements.accessInputCounter.textContent = `${inviteParam.length}/10`;
+          }
+          if (inviteParam.length === 10) {
+            setTimeout(() => this.handleUnlockAttempt(), 300);
+          }
+        }
+      }
+    }
+  }
+
+  ensureAdminConversation() {
+    if (!this.conversations.find(c => c.id === 'admin_panel')) {
+      this.conversations.push({
+        id: 'admin_panel',
+        name: 'Admin Panel',
+        phone: 'System Admin',
+        avatar: AVATAR_ADMIN,
+        isSMS: false,
+        isPinned: false,
+        unreadCount: 0,
+        isOnline: true,
+        lastTime: 'Active',
+        messages: []
+      });
+    }
+  }
+
+  async handleUnlockAttempt() {
+    const input = this.elements.accessCodeInput;
+    if (!input) return;
+    const rawVal = input.value.trim().toUpperCase();
+    const errorEl = this.elements.accessErrorMsg;
+    const cardEl = this.elements.privateAccessCard;
+    const spinner = this.elements.accessSpinner;
+    const btn = this.elements.btnUnlockAccess;
+    const btnText = btn ? btn.querySelector('.btn-text') : null;
+
+    if (!rawVal || rawVal.length !== 10) {
+      if (errorEl) {
+        errorEl.textContent = 'Please enter a 10-character invite code.';
+        errorEl.style.display = 'block';
+      }
+      if (cardEl) {
+        cardEl.classList.remove('shake');
+        void cardEl.offsetWidth;
+        cardEl.classList.add('shake');
+      }
+      soundEngine.playTapbackPop();
+      return;
+    }
+
+    if (errorEl) errorEl.style.display = 'none';
+    if (spinner) spinner.style.display = 'block';
+    if (btnText) btnText.style.display = 'none';
+    if (btn) btn.disabled = true;
+
+    try {
+      const result = await this.authManager.redeemCode(rawVal);
+      if (result.success) {
+        soundEngine.playSendSwoosh();
+        if (this.elements.privateAccessOverlay) {
+          this.elements.privateAccessOverlay.classList.add('fade-out');
+          setTimeout(() => {
+            this.elements.privateAccessOverlay.style.display = 'none';
+          }, 350);
+        }
+
+        // Clean URL if query parameter was used
+        if (window.location.search) {
+          try {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch (e) {}
+        }
+
+        if (result.role === 'admin') {
+          this.ensureAdminConversation();
+        }
+        this.renderSidebar();
+        this.switchConversation('4000');
+      } else {
+        if (errorEl) {
+          errorEl.textContent = result.error || 'Access denied.';
+          errorEl.style.display = 'block';
+        }
+        if (cardEl) {
+          cardEl.classList.remove('shake');
+          void cardEl.offsetWidth;
+          cardEl.classList.add('shake');
+        }
+        soundEngine.playTapbackPop();
+      }
+    } catch (e) {
+      if (errorEl) {
+        errorEl.textContent = 'Verification error. Please retry.';
+        errorEl.style.display = 'block';
+      }
+    } finally {
+      if (spinner) spinner.style.display = 'none';
+      if (btnText) btnText.style.display = 'inline';
+      if (btn) btn.disabled = false;
+    }
   }
 
   loadSessionData() {
@@ -966,6 +1393,74 @@ class AppleMessagesApp {
     const btnNewMob = document.getElementById('btnNewMessageMobile');
     if (btnNewMob) btnNewMob.addEventListener('click', handleNewMessage);
 
+    // Private Access Input & Submit
+    if (this.elements.accessCodeInput) {
+      this.elements.accessCodeInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase();
+        if (this.elements.accessInputCounter) {
+          this.elements.accessInputCounter.textContent = `${e.target.value.length}/10`;
+        }
+        if (this.elements.accessErrorMsg) {
+          this.elements.accessErrorMsg.style.display = 'none';
+        }
+      });
+
+      this.elements.accessCodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.handleUnlockAttempt();
+        }
+      });
+    }
+
+    if (this.elements.btnUnlockAccess) {
+      this.elements.btnUnlockAccess.addEventListener('click', () => {
+        this.handleUnlockAttempt();
+      });
+    }
+
+    // Admin Dashboard Actions
+    if (this.elements.btnOpenGenerateModal) {
+      this.elements.btnOpenGenerateModal.addEventListener('click', () => {
+        this.openGenerateModal();
+      });
+    }
+
+    if (this.elements.btnCopyAllUnused) {
+      this.elements.btnCopyAllUnused.addEventListener('click', () => {
+        this.handleCopyAllUnused();
+      });
+    }
+
+    if (this.elements.btnCancelGenerate) {
+      this.elements.btnCancelGenerate.addEventListener('click', () => {
+        this.closeGenerateModal();
+      });
+    }
+
+    if (this.elements.btnConfirmGenerate) {
+      this.elements.btnConfirmGenerate.addEventListener('click', () => {
+        this.handleGenerateInvitesConfirm();
+      });
+    }
+
+    document.querySelectorAll('.count-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.count-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const count = chip.getAttribute('data-count');
+        if (this.elements.customGenerateCount) {
+          this.elements.customGenerateCount.value = count;
+        }
+      });
+    });
+
+    if (this.elements.customGenerateCount) {
+      this.elements.customGenerateCount.addEventListener('input', () => {
+        document.querySelectorAll('.count-chip').forEach(c => c.classList.remove('active'));
+      });
+    }
+
     // Audio click initialization for browser autoplay policy
     document.addEventListener('pointerdown', () => soundEngine.init(), { once: true });
   }
@@ -1024,7 +1519,9 @@ class AppleMessagesApp {
     list.forEach(convo => {
       const lastMsg = convo.messages[convo.messages.length - 1];
       let snippet = '';
-      if (lastMsg) {
+      if (convo.id === 'admin_panel') {
+        snippet = 'Security & Invite Management';
+      } else if (lastMsg) {
         if (lastMsg.type === 'text') snippet = lastMsg.text.replace(/\n+/g, ' ');
         else if (lastMsg.type === 'image') snippet = '📷 Photo';
         else if (lastMsg.type === 'audio') snippet = '🎙️ Voice Memo';
@@ -1032,7 +1529,7 @@ class AppleMessagesApp {
       }
 
       const item = document.createElement('div');
-      item.className = `convo-item ${convo.unreadCount > 0 ? 'unread' : ''}`;
+      item.className = `convo-item ${convo.unreadCount > 0 ? 'unread' : ''} ${convo.id === this.activeConvoId ? 'active' : ''}`;
       item.setAttribute('data-id', convo.id);
 
       item.innerHTML = `
@@ -1066,6 +1563,9 @@ class AppleMessagesApp {
   }
 
   switchConversation(convoId) {
+    if (convoId === 'admin_panel' && !this.authManager.isAdmin()) {
+      convoId = '4000';
+    }
     this.activeConvoId = convoId;
     const convo = this.conversations.find(c => c.id === convoId);
     if (!convo) return;
@@ -1084,6 +1584,24 @@ class AppleMessagesApp {
   renderActiveConversation() {
     const convo = this.conversations.find(c => c.id === this.activeConvoId);
     if (!convo) return;
+
+    if (this.activeConvoId === 'admin_panel') {
+      if (this.elements.messageStreamContainer) this.elements.messageStreamContainer.style.display = 'none';
+      if (this.elements.chatInputBarWrap) this.elements.chatInputBarWrap.style.display = 'none';
+      if (this.elements.adminDashboardView) this.elements.adminDashboardView.style.display = 'flex';
+
+      if (this.elements.activeContactAvatar) this.elements.activeContactAvatar.src = convo.avatar;
+      if (this.elements.activeContactName) this.elements.activeContactName.textContent = convo.name;
+      if (this.elements.activeContactSubtitle) this.elements.activeContactSubtitle.textContent = 'System Administration';
+      if (this.elements.activePresenceDot) this.elements.activePresenceDot.style.display = 'block';
+
+      this.renderAdminDashboard();
+      return;
+    } else {
+      if (this.elements.messageStreamContainer) this.elements.messageStreamContainer.style.display = 'block';
+      if (this.elements.chatInputBarWrap) this.elements.chatInputBarWrap.style.display = 'block';
+      if (this.elements.adminDashboardView) this.elements.adminDashboardView.style.display = 'none';
+    }
 
     // Header info
     if (this.elements.activeContactAvatar) this.elements.activeContactAvatar.src = convo.avatar;
@@ -1686,6 +2204,155 @@ class AppleMessagesApp {
     soundEngine.playTapbackPop();
     const name = this.elements.activeContactName.textContent;
     alert(`Connecting FaceTime ${type === 'video' ? 'Video' : 'Audio'} with ${name}...`);
+  }
+
+  // --------------------------------------------------------------------------
+  // ADMIN DASHBOARD CONTROLLER METHODS
+  // --------------------------------------------------------------------------
+  renderAdminDashboard() {
+    if (!this.elements.adminDashboardView) return;
+    const db = this.authManager.getDatabase();
+    const invites = db.invites || [];
+    const redemptions = db.redemptions || [];
+
+    const redeemedCount = invites.filter(i => i.status === 'redeemed').length + (db.adminRedeemed ? 1 : 0);
+    const availableCount = invites.filter(i => i.status === 'available').length;
+    const totalCount = invites.length + 1; // includes admin code
+
+    if (this.elements.statTotalInvites) this.elements.statTotalInvites.textContent = totalCount;
+    if (this.elements.statRedeemedInvites) this.elements.statRedeemedInvites.textContent = redeemedCount;
+    if (this.elements.statAvailableInvites) this.elements.statAvailableInvites.textContent = availableCount;
+    if (this.elements.badgeRedeemedCount) this.elements.badgeRedeemedCount.textContent = redemptions.length;
+    if (this.elements.badgeAvailableCount) this.elements.badgeAvailableCount.textContent = availableCount;
+
+    // Render Redeemed VIPs & Devices
+    if (this.elements.adminRedeemedList) {
+      this.elements.adminRedeemedList.innerHTML = '';
+      if (redemptions.length === 0) {
+        this.elements.adminRedeemedList.innerHTML = `<div class="admin-empty-state">No invite codes redeemed yet.</div>`;
+      } else {
+        redemptions.forEach(r => {
+          const card = document.createElement('div');
+          card.className = 'admin-item-card';
+
+          const dateStr = r.redeemedAt ? new Date(r.redeemedAt).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+          }) : 'Just now';
+
+          card.innerHTML = `
+            <div class="admin-item-top">
+              <span class="admin-code-pill">${r.code}</span>
+              <span class="admin-status-badge ${r.role === 'admin' ? 'available' : 'redeemed'}">
+                ${r.role === 'admin' ? 'Admin Master' : 'VIP Redeemed'}
+              </span>
+            </div>
+            <div class="admin-item-meta">
+              <span class="meta-chip">
+                📱 <span>${r.device || 'Unknown Device'}</span>
+              </span>
+              <span class="meta-chip">
+                🌐 <span>${r.ip || 'Unknown IP'}</span>
+              </span>
+              <span class="meta-chip">
+                🕒 <span>${dateStr}</span>
+              </span>
+            </div>
+          `;
+          this.elements.adminRedeemedList.appendChild(card);
+        });
+      }
+    }
+
+    // Render Available Unused Invites
+    if (this.elements.adminAvailableList) {
+      this.elements.adminAvailableList.innerHTML = '';
+      const availableList = invites.filter(i => i.status === 'available');
+      if (availableList.length === 0) {
+        this.elements.adminAvailableList.innerHTML = `<div class="admin-empty-state">All invite passes have been redeemed! Tap "Generate Invites" to add more.</div>`;
+      } else {
+        availableList.forEach(inv => {
+          const row = document.createElement('div');
+          row.className = 'available-code-row';
+          row.innerHTML = `
+            <span class="available-code-text">${inv.code}</span>
+            <button type="button" class="btn-copy-code" data-code="${inv.code}">Copy</button>
+          `;
+          const copyBtn = row.querySelector('.btn-copy-code');
+          copyBtn.addEventListener('click', () => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(inv.code).then(() => {
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+                soundEngine.playTapbackPop();
+                setTimeout(() => {
+                  copyBtn.textContent = 'Copy';
+                  copyBtn.classList.remove('copied');
+                }, 1800);
+              }).catch(() => {
+                prompt('Copy this invite code:', inv.code);
+              });
+            } else {
+              prompt('Copy this invite code:', inv.code);
+            }
+          });
+          this.elements.adminAvailableList.appendChild(row);
+        });
+      }
+    }
+  }
+
+  openGenerateModal() {
+    if (this.elements.adminGenerateModal) {
+      this.elements.adminGenerateModal.style.display = 'flex';
+      soundEngine.playTapbackPop();
+    }
+  }
+
+  closeGenerateModal() {
+    if (this.elements.adminGenerateModal) {
+      this.elements.adminGenerateModal.style.display = 'none';
+    }
+  }
+
+  handleGenerateInvitesConfirm() {
+    let count = 5;
+    const activeChip = document.querySelector('.count-chip.active');
+    if (activeChip) count = parseInt(activeChip.getAttribute('data-count'), 10) || 5;
+    const customVal = parseInt(this.elements.customGenerateCount ? this.elements.customGenerateCount.value : '', 10);
+    if (!isNaN(customVal) && customVal > 0) count = customVal;
+
+    this.authManager.generateInvites(count);
+    soundEngine.playReceivedChime();
+    this.closeGenerateModal();
+    this.renderAdminDashboard();
+    this.renderSidebar();
+  }
+
+  handleCopyAllUnused() {
+    const db = this.authManager.getDatabase();
+    const available = (db.invites || []).filter(i => i.status === 'available').map(i => i.code);
+    if (available.length === 0) {
+      alert('No available invite codes to copy.');
+      return;
+    }
+    const text = available.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        soundEngine.playTapbackPop();
+        if (this.elements.btnCopyAllUnused) {
+          const span = this.elements.btnCopyAllUnused.querySelector('span');
+          if (span) {
+            const original = span.textContent;
+            span.textContent = 'Copied All!';
+            setTimeout(() => { span.textContent = original; }, 1800);
+          }
+        }
+      }).catch(() => {
+        prompt('Copy all available invite codes:', text);
+      });
+    } else {
+      prompt('Copy all available invite codes:', text);
+    }
   }
 }
 

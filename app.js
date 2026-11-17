@@ -751,76 +751,35 @@ class BiletAuthManager {
     const cloudDB = await this.fetchCloudDB();
     const localDB = this.getDatabase();
 
-    const isCloudAdminRedeemed = cloudDB ? !!cloudDB.adminRedeemed : localDB.adminRedeemed;
     const cloudRedeemedCodes = cloudDB && Array.isArray(cloudDB.redeemedCodes) ? cloudDB.redeemedCodes : [];
     const cloudRedemptions = cloudDB && Array.isArray(cloudDB.redemptions) ? cloudDB.redemptions : (localDB.redemptions || []);
     const customCodes = cloudDB && Array.isArray(cloudDB.customCodes) ? cloudDB.customCodes : [];
 
     // =========================================================================
-    // ADMIN CODE VERIFICATION (STRICT SINGLE-USE ACROSS ALL DEVICES WORLDWIDE)
+    // ADMIN CODE: works ALWAYS, on ANY device, unlimited times.
+    // No cloud database read/write — it's just compared to this.adminCode.
     // =========================================================================
     if (code === this.adminCode) {
-      let currentToken = '';
-      try {
-        currentToken = localStorage.getItem(this.adminTokenKey) || '';
-      } catch (e) {}
-
-      // If already redeemed in the cloud:
-      if (isCloudAdminRedeemed) {
-        // Only allow if this device already holds the active admin session token
-        if (cloudDB && cloudDB.adminSessionToken && currentToken === cloudDB.adminSessionToken) {
-          return { success: true, role: 'admin', code: code };
-        }
-        return { success: false, error: 'This Admin Code has already been redeemed on another device.' };
-      }
-
-      // FIRST-TIME REDEMPTION OF ADMIN CODE: Lock it permanently worldwide!
-      const newAdminToken = 'adm_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
-      try {
-        localStorage.setItem(this.adminTokenKey, newAdminToken);
-      } catch (e) {}
-
-      const newRedemption = {
-        code: code,
-        role: 'admin',
-        redeemedAt: timestamp,
-        ip: ip,
-        device: device
-      };
-
-      const updatedCloudData = {
-        adminRedeemed: true,
-        adminSessionToken: newAdminToken,
-        redeemedCodes: cloudRedeemedCodes,
-        redemptions: [newRedemption, ...cloudRedemptions],
-        customCodes: customCodes
-      };
-
-      // Save to cloud immediately so NO OTHER DEVICE CAN EVER REDEEM IT
-      await this.saveCloudDB(updatedCloudData);
-
-      // Save local DB and local session
-      localDB.adminRedeemed = true;
-      localDB.adminDeviceInfo = newRedemption;
-      localDB.redemptions = [newRedemption, ...localDB.redemptions];
-      this.saveDatabase(localDB);
-
-      const session = {
+      this.setSession({
         authenticated: true,
         code: code,
         role: 'admin',
-        adminToken: newAdminToken,
         redeemedAt: timestamp,
         ip: ip,
         device: device
-      };
-      this.setSession(session);
+      });
       return { success: true, role: 'admin', code: code };
     }
 
     // =========================================================================
     // REGULAR INVITE CODE VERIFICATION (STRICT SINGLE-USE ACROSS ALL DEVICES)
     // =========================================================================
+    // Without the cloud list we can't know if the code was already used,
+    // and saving would overwrite the redeemed list — so refuse instead.
+    if (!cloudDB) {
+      return { success: false, error: 'Could not reach the server. Please try again.' };
+    }
+
     const allValidCodes = [...this.initialCodes, ...customCodes];
     if (!allValidCodes.includes(code)) {
       return { success: false, error: 'Invalid invite code. Access denied.' };
@@ -844,8 +803,6 @@ class BiletAuthManager {
     const updatedRedemptions = [newRedemption, ...cloudRedemptions];
 
     const updatedCloudData = {
-      adminRedeemed: isCloudAdminRedeemed,
-      adminSessionToken: cloudDB ? cloudDB.adminSessionToken : '',
       redeemedCodes: updatedRedeemedCodes,
       redemptions: updatedRedemptions,
       customCodes: customCodes
@@ -916,6 +873,37 @@ class BiletAuthManager {
     this.saveDatabase(localDB);
 
     return newCodes;
+  }
+
+  // RESET: every invite code becomes unused again and the device/IP log is cleared.
+  // deleteGenerated = true also removes the codes generated from the Admin Panel
+  // (only the 10 initialCodes stay).
+  async resetCodes(deleteGenerated = false) {
+    const cloudDB = await this.fetchCloudDB();
+    const customCodes = (!deleteGenerated && cloudDB && Array.isArray(cloudDB.customCodes)) ? cloudDB.customCodes : [];
+
+    await this.saveCloudDB({
+      redeemedCodes: [],
+      redemptions: [],
+      customCodes: customCodes
+    });
+
+    // Rebuild this device's local copy from scratch
+    try { localStorage.removeItem(this.dbKey); } catch (e) {}
+    this.initDatabase();
+    const localDB = this.getDatabase();
+    customCodes.forEach(code => {
+      localDB.invites.unshift({
+        code: code,
+        status: 'available',
+        createdAt: new Date().toISOString(),
+        redeemedAt: null,
+        ip: null,
+        device: null
+      });
+    });
+    this.saveDatabase(localDB);
+    return true;
   }
 }
 
@@ -1002,6 +990,7 @@ class AppleMessagesApp {
       statAvailableInvites: document.getElementById('statAvailableInvites'),
       btnOpenGenerateModal: document.getElementById('btnOpenGenerateModal'),
       btnCopyAllUnused: document.getElementById('btnCopyAllUnused'),
+      btnResetCodes: document.getElementById('btnResetCodes'),
       badgeRedeemedCount: document.getElementById('badgeRedeemedCount'),
       badgeAvailableCount: document.getElementById('badgeAvailableCount'),
       adminRedeemedList: document.getElementById('adminRedeemedList'),
@@ -1558,6 +1547,12 @@ class AppleMessagesApp {
     if (this.elements.btnCopyAllUnused) {
       this.elements.btnCopyAllUnused.addEventListener('click', () => {
         this.handleCopyAllUnused();
+      });
+    }
+
+    if (this.elements.btnResetCodes) {
+      this.elements.btnResetCodes.addEventListener('click', () => {
+        this.handleResetCodes();
       });
     }
 
@@ -2368,9 +2363,9 @@ class AppleMessagesApp {
   }
 
   updateAdminDashboardUI(invites, redemptions, isAdminRedeemed) {
-    const redeemedCount = invites.filter(i => i.status === 'redeemed').length + (isAdminRedeemed ? 1 : 0);
+    const redeemedCount = invites.filter(i => i.status === 'redeemed').length;
     const availableCount = invites.filter(i => i.status === 'available').length;
-    const totalCount = invites.length + 1; // includes admin code
+    const totalCount = invites.length;
 
     if (this.elements.statTotalInvites) this.elements.statTotalInvites.textContent = totalCount;
     if (this.elements.statRedeemedInvites) this.elements.statRedeemedInvites.textContent = redeemedCount;
@@ -2479,6 +2474,21 @@ class AppleMessagesApp {
     this.closeGenerateModal();
     this.renderAdminDashboard();
     this.renderSidebar();
+  }
+
+  async handleResetCodes() {
+    const ok = confirm('Reset all invite codes? Every code becomes unused again and the device/IP log is cleared.');
+    if (!ok) return;
+    const deleteGenerated = confirm('Also DELETE the codes you generated? (OK = delete them, Cancel = keep them as unused)');
+    const btn = this.elements.btnResetCodes;
+    if (btn) btn.disabled = true;
+    try {
+      await this.authManager.resetCodes(deleteGenerated);
+      soundEngine.playReceivedChime();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+    this.renderAdminDashboard();
   }
 
   handleCopyAllUnused() {

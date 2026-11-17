@@ -2369,7 +2369,13 @@ body.dark-mode .apple-switch .slider {
 /* Action Toolbar */
 .admin-actions-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+}
+
+#btnResetCodes {
+  flex-basis: 100%;
+  color: #FF453A;
 }
 
 .admin-action-btn {

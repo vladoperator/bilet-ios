@@ -29,10 +29,27 @@ A 1:1 pixel-perfect recreation of the Apple Messages (iMessage) user interface a
   - Pre-loaded interactive contacts (Sarah Jenkins, Tim Cook, Alex Chen, Dev Team, Luigi's Pizza).
   - 3-dot bouncing typing indicator and automated contextual replies.
 
+## 🔐 Private Access & Admin Backend
+
+Access is gated by invite codes that are checked **on the server** (Vercel Functions in `api/`, data in a private Vercel Blob store). Nothing secret is in the public files.
+
+| Endpoint | Who | What |
+| --- | --- | --- |
+| `POST /api/redeem` | anyone | Redeem an invite code (single use, atomic) or the admin code |
+| `POST /api/session` | any device | Is my session still valid? (devices ask on load and every minute) |
+| `POST /api/admin/state` | admin | Codes, redeemed devices (device, IP, time) |
+| `POST /api/admin/generate` | admin | Generate new invite codes |
+| `POST /api/admin/revoke` | admin | Remove one device (its code becomes unused again) |
+| `POST /api/admin/reset` | admin | Reset all codes and sign out every device; admin stays |
+
+Environment variables (Vercel project settings, mark as Sensitive):
+
+- `ADMIN_CODE` – the admin login code.
+- `INITIAL_CODES` – comma separated seed invite codes.
+- `BLOB_READ_WRITE_TOKEN` – added automatically when the Blob store is connected.
+
+Wrong codes are rate limited per IP (10 tries / 15 min). Run the backend tests with `npm test`.
+
 ## 🚀 Quick Start
 
-Open `index.html` directly in any modern browser:
-```bash
-# Double click index.html or open via terminal:
-start index.html
-```
+The app needs the backend, so run it with Vercel (`npx vercel dev`) or open the deployed site. Opening `index.html` as a plain file only shows the access screen.

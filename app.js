@@ -523,164 +523,38 @@ function escapeHtml(value) {
 }
 
 // ============================================================================
-// 3.5 BILET AUTH & CLOUD DATABASE MANAGER (Real-Time Worldwide Sync & Device Tracking)
+// 3.5 BILET AUTH MANAGER (talks to the backend in /api — Vercel Functions)
+//   All rules (codes, single-use, admin, device removal) are enforced on the
+//   server. This class only keeps this device's session token and calls the API.
 // ============================================================================
 class BiletAuthManager {
   constructor() {
-    this.cloudApiUrl = 'https://api.restful-api.dev/objects/ff808181a09d98f701a0e37dc9cb262c';
-    this.dbKey = 'bilet_auth_db_v1';
-    this.sessionKey = 'bilet_user_session_v1';
-    this.adminTokenKey = 'bilet_admin_device_token_v1';
-    this.adminCode = 'ADMIN4000X';
-    this.initialCodes = [
-      'NU84YXMD97',
-      '84XQLRT7PT',
-      'CAPP4R87WJ',
-      'PPBXF5YLVE',
-      '5JKBDRBUE4',
-      '9H7MFAKKA8',
-      'C9CUKPF6WC',
-      'LS945S9UFP',
-      'SZLWFQ2BRP',
-      'AMKUZ83M4P'
-    ];
-    this.initDatabase();
+    this.sessionKey = 'bilet_user_session_v2';
+    // Pre-backend leftovers: sessions without a server token can't be trusted.
+    try {
+      localStorage.removeItem('bilet_user_session_v1');
+      localStorage.removeItem('bilet_auth_db_v1');
+      localStorage.removeItem('bilet_admin_device_token_v1');
+    } catch (e) {}
   }
 
-  initDatabase() {
+  // POST JSON to the backend. Never throws: { ok, status, body }, status 0 = unreachable.
+  async api(path, payload, token) {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 10000);
     try {
-      const raw = localStorage.getItem(this.dbKey);
-      if (!raw) {
-        const initialDB = {
-          adminCode: this.adminCode,
-          adminRedeemed: false,
-          adminDeviceInfo: null,
-          invites: this.initialCodes.map(code => ({
-            code: code,
-            status: 'available',
-            createdAt: new Date().toISOString(),
-            redeemedAt: null,
-            ip: null,
-            device: null
-          })),
-          redemptions: []
-        };
-        localStorage.setItem(this.dbKey, JSON.stringify(initialDB));
-      }
-    } catch (e) {
-      console.warn('Auth DB init error', e);
-    }
-  }
-
-  // Returns the raw cloud data object, or null when the server can't be reached.
-  async fetchCloudDB() {
-    try {
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(this.cloudApiUrl, { signal: controller.signal, cache: 'no-store' });
-      clearTimeout(tid);
-      if (res.ok) {
-        const json = await res.json();
-        if (json && json.data && typeof json.data === 'object') {
-          return json.data;
-        }
-      }
-    } catch (e) {
-      console.warn('Cloud DB fetch failed', e);
-    }
-    return null;
-  }
-
-  // Returns true only when the server confirmed the write (HTTP 2xx).
-  async saveCloudDB(dataObj) {
-    try {
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 4500);
-      const res = await fetch(this.cloudApiUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'bilet_cloud_db',
-          data: dataObj
-        }),
-        signal: controller.signal
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      const res = await fetch(path, {
+        method: 'POST', headers, body: JSON.stringify(payload || {}), signal: controller.signal, cache: 'no-store'
       });
+      let body = {};
+      try { body = await res.json(); } catch (e) {}
+      return { ok: res.ok, status: res.status, body };
+    } catch (e) {
+      return { ok: false, status: 0, body: { error: 'Could not reach the server. Please try again.' } };
+    } finally {
       clearTimeout(tid);
-      return res.ok;
-    } catch (e) {
-      console.warn('Cloud DB save failed', e);
-      return false;
-    }
-  }
-
-  // Cloud data always read through this so missing/garbled fields never crash a caller.
-  // redeemedCodes is the union of the stored list and the codes found in redemptions.
-  normalizeCloudData(data) {
-    const src = (data && typeof data === 'object') ? data : {};
-    const redemptions = (Array.isArray(src.redemptions) ? src.redemptions : [])
-      .filter(r => r && typeof r === 'object');
-    const stored = Array.isArray(src.redeemedCodes) ? src.redeemedCodes : [];
-    return {
-      redeemedCodes: Array.from(new Set([...stored, ...redemptions.map(r => r.code).filter(Boolean)])),
-      redemptions: redemptions,
-      customCodes: Array.isArray(src.customCodes) ? src.customCodes : []
-    };
-  }
-
-  // Safe read-modify-write against the cloud DB. The server replaces the whole object on
-  // every PUT, so two devices writing at once could silently drop each other's change.
-  //   mutate(db)    -> { data } to write, or { error } to abort with a message
-  //   isApplied(db) -> true when a fresh read-back shows our change is really stored
-  // If the read-back shows we were overwritten, the whole cycle is retried.
-  async updateCloudDB(mutate, isApplied, attempts = 3) {
-    for (let i = 0; i < attempts; i++) {
-      const current = await this.fetchCloudDB();
-      if (!current) return { ok: false, reason: 'unreachable' };
-
-      const outcome = mutate(this.normalizeCloudData(current));
-      if (outcome.error) return { ok: false, reason: 'rejected', error: outcome.error };
-
-      if (!(await this.saveCloudDB(outcome.data))) return { ok: false, reason: 'save-failed' };
-
-      const check = await this.fetchCloudDB();
-      // Write was confirmed by the server; if the read-back itself fails we can't do better.
-      if (!check || isApplied(this.normalizeCloudData(check))) {
-        return { ok: true, data: outcome.data };
-      }
-    }
-    return { ok: false, reason: 'conflict' };
-  }
-
-  cloudErrorMessage(result) {
-    switch (result.reason) {
-      case 'rejected': return result.error;
-      case 'unreachable': return 'Could not reach the server. Please try again.';
-      case 'save-failed': return 'Could not save to the server. Please try again.';
-      default: return 'The server is busy. Please try again.';
-    }
-  }
-
-  makeSessionId() {
-    const bytes = new Uint8Array(16);
-    window.crypto.getRandomValues(bytes);
-    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  getDatabase() {
-    try {
-      const raw = localStorage.getItem(this.dbKey);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {
-      console.warn('Error reading Auth DB', e);
-    }
-    return { adminCode: this.adminCode, adminRedeemed: false, invites: [], redemptions: [] };
-  }
-
-  saveDatabase(db) {
-    try {
-      localStorage.setItem(this.dbKey, JSON.stringify(db));
-    } catch (e) {
-      console.warn('Error saving Auth DB', e);
     }
   }
 
@@ -704,54 +578,26 @@ class BiletAuthManager {
     } catch (e) {}
   }
 
-  // Is this device still allowed in? Checked against the cloud, not just local storage.
-  //   'valid'   - admin (never depends on the cloud), or the cloud still lists this device
-  //   'revoked' - no session, or the cloud no longer lists it (reset, forged or pre-update session)
-  //   'unknown' - cloud unreachable; keep the session rather than lock people out on a network blip
-  async validateSession() {
-    const session = this.getSession();
-    if (!session || !session.authenticated) return 'revoked';
-    if (session.role === 'admin') return 'valid';
-
-    const cloud = await this.fetchCloudDB();
-    if (!cloud) return 'unknown';
-
-    const { redemptions } = this.normalizeCloudData(cloud);
-    const listed = !!session.sessionId &&
-      redemptions.some(r => r.sessionId === session.sessionId && r.code === session.code);
-    return listed ? 'valid' : 'revoked';
-  }
-
-  // Rebuild this device's cached copy from a normalized cloud snapshot, so the
-  // admin panel never shows codes/devices the cloud no longer has.
-  syncLocalFromCloud(cloud) {
-    const db = this.getDatabase();
-    const created = new Map((db.invites || []).map(i => [i.code, i.createdAt]));
-    const byCode = new Map(cloud.redemptions.map(r => [r.code, r]));
-    db.invites = [...this.initialCodes, ...cloud.customCodes].map(code => {
-      const r = byCode.get(code);
-      return {
-        code: code,
-        status: cloud.redeemedCodes.includes(code) ? 'redeemed' : 'available',
-        createdAt: created.get(code) || new Date().toISOString(),
-        redeemedAt: r ? r.redeemedAt || null : null,
-        ip: r ? r.ip || null : null,
-        device: r ? r.device || null : null
-      };
-    });
-    db.redemptions = cloud.redemptions;
-    this.saveDatabase(db);
-    return db.invites;
-  }
-
   isAuthenticated() {
     const session = this.getSession();
-    return !!(session && session.authenticated && session.code);
+    return !!(session && session.authenticated && session.token);
   }
 
   isAdmin() {
     const session = this.getSession();
-    return !!(session && session.authenticated && session.role === 'admin');
+    return !!(session && session.authenticated && session.token && session.role === 'admin');
+  }
+
+  // Is this device still allowed in? Asked to the server, never decided locally.
+  //   'valid'   - server accepts the token (admin, or a user whose code is still redeemed)
+  //   'revoked' - no token, or the server rejects it (reset / device removed / expired)
+  //   'unknown' - server unreachable or erroring; keep the session instead of locking people out
+  async validateSession() {
+    const session = this.getSession();
+    if (!session || !session.authenticated || !session.token) return 'revoked';
+    const r = await this.api('/api/session', { token: session.token });
+    if (!r.ok) return 'unknown';
+    return r.body && r.body.valid ? 'valid' : 'revoked';
   }
 
   detectDevice() {
@@ -828,179 +674,59 @@ class BiletAuthManager {
     return 'Web Browser Device';
   }
 
-  async fetchIP() {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
-      const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ip) return data.ip;
-      }
-    } catch (e) {
-      try {
-        const res2 = await fetch('https://icanhazip.com');
-        if (res2.ok) {
-          const text = await res2.text();
-          if (text) return text.trim();
-        }
-      } catch (err) {}
-    }
-    return '127.0.0.1 (Local / Private)';
-  }
-
   async redeemCode(inputCode) {
     const code = (inputCode || '').trim().toUpperCase();
     if (!code || code.length !== 10) {
       return { success: false, error: 'Please enter a valid 10-character code.' };
     }
 
-    const device = this.detectDevice();
-    const ip = await this.fetchIP();
-    const timestamp = new Date().toISOString();
-
-    // =========================================================================
-    // ADMIN CODE: works ALWAYS, on ANY device, unlimited times.
-    // No cloud database read/write — it's just compared to this.adminCode, so a
-    // reset can never lock the admin out.
-    // =========================================================================
-    if (code === this.adminCode) {
-      this.setSession({
-        authenticated: true,
-        code: code,
-        role: 'admin',
-        redeemedAt: timestamp,
-        ip: ip,
-        device: device
-      });
-      return { success: true, role: 'admin', code: code };
+    const r = await this.api('/api/redeem', { code: code, device: this.detectDevice() });
+    if (!r.ok || !r.body || !r.body.token) {
+      return { success: false, error: (r.body && r.body.error) || 'Access denied.' };
     }
 
-    // =========================================================================
-    // REGULAR INVITE CODE VERIFICATION (STRICT SINGLE-USE ACROSS ALL DEVICES)
-    // =========================================================================
-    // Each redemption gets its own sessionId, stored both in the cloud and on this
-    // device. validateSession() later checks the cloud still lists it — that is how
-    // a reset signs this device out, and how a lost write race loses access.
-    const sessionId = this.makeSessionId();
-    const newRedemption = {
-      code: code,
-      role: 'user',
-      sessionId: sessionId,
-      redeemedAt: timestamp,
-      ip: ip,
-      device: device
-    };
-
-    const result = await this.updateCloudDB(
-      (db) => {
-        if (![...this.initialCodes, ...db.customCodes].includes(code)) {
-          return { error: 'Invalid invite code. Access denied.' };
-        }
-        // Already redeemed on ANY device worldwide?
-        if (db.redeemedCodes.includes(code)) {
-          return { error: 'This invite code has already been redeemed.' };
-        }
-        return {
-          data: {
-            redeemedCodes: [...db.redeemedCodes, code],
-            redemptions: [newRedemption, ...db.redemptions],
-            customCodes: db.customCodes
-          }
-        };
-      },
-      (db) => db.redemptions.some(r => r.sessionId === sessionId)
-    );
-
-    if (!result.ok) {
-      return { success: false, error: this.cloudErrorMessage(result) };
-    }
-
-    this.syncLocalFromCloud(this.normalizeCloudData(result.data));
     this.setSession({
       authenticated: true,
-      code: code,
-      role: 'user',
-      sessionId: sessionId,
-      redeemedAt: timestamp,
-      ip: ip,
-      device: device
+      role: r.body.role,
+      token: r.body.token,
+      redeemedAt: new Date().toISOString(),
+      device: this.detectDevice()
     });
-    return { success: true, role: 'user', code: code };
+    return { success: true, role: r.body.role };
   }
 
-  // Returns { success, codes } or { success: false, error }. Codes only count as
-  // generated once the cloud has confirmed them, so every device recognises them.
+  // ---- Admin calls (server checks the admin token on every one) ----
+  adminCall(path, payload) {
+    const session = this.getSession();
+    return this.api(path, payload, session && session.token);
+  }
+
+  async fetchAdminState() {
+    const r = await this.adminCall('/api/admin/state', {});
+    return r.ok ? { success: true, invites: r.body.invites || [], redemptions: r.body.redemptions || [] }
+                : { success: false, status: r.status, error: (r.body && r.body.error) || 'Could not load.' };
+  }
+
   async generateInvites(count) {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const newCodes = [];
-    const num = Math.max(1, Math.min(100, parseInt(count, 10) || 5));
-
-    for (let i = 0; i < num; i++) {
-      let code = '';
-      const array = new Uint32Array(10);
-      window.crypto.getRandomValues(array);
-      for (let j = 0; j < 10; j++) {
-        code += chars[array[j] % chars.length];
-      }
-      newCodes.push(code);
-    }
-
-    const result = await this.updateCloudDB(
-      (db) => ({
-        data: {
-          redeemedCodes: db.redeemedCodes,
-          redemptions: db.redemptions,
-          customCodes: [...newCodes, ...db.customCodes]
-        }
-      }),
-      (db) => newCodes.every(c => db.customCodes.includes(c))
-    );
-
-    if (!result.ok) {
-      return { success: false, error: this.cloudErrorMessage(result) };
-    }
-
-    this.syncLocalFromCloud(this.normalizeCloudData(result.data));
-    return { success: true, codes: newCodes };
+    const n = Math.max(1, Math.min(100, parseInt(count, 10) || 5));
+    const r = await this.adminCall('/api/admin/generate', { count: n });
+    return r.ok ? { success: true, codes: r.body.codes || [] }
+                : { success: false, status: r.status, error: (r.body && r.body.error) || 'Failed.' };
   }
 
-  // RESET: every invite code becomes unused again, the device/IP log is cleared and
-  // every connected non-admin device is signed out the next time it checks in
-  // (its redemption disappears from the cloud, so validateSession() fails).
-  // The admin code and admin sessions are never touched.
-  // deleteGenerated = true also removes the codes generated from the Admin Panel
-  // (only the 10 initialCodes stay).
-  // Never writes unless the current cloud state was read first, so an outage can't
-  // wipe codes the admin chose to keep.
+  async removeDevice(code) {
+    const r = await this.adminCall('/api/admin/revoke', { code: code });
+    return r.ok ? { success: true }
+                : { success: false, status: r.status, error: (r.body && r.body.error) || 'Failed.' };
+  }
+
+  // RESET: every invite code becomes unused again, the device/IP log is cleared and every
+  // connected non-admin device is signed out. Admin sessions are untouched.
+  // deleteGenerated = true also removes the codes generated from the Admin Panel.
   async resetCodes(deleteGenerated = false) {
-    const removed = new Set();
-    const keyOf = (r) => r.sessionId || (r.code + '|' + r.redeemedAt);
-
-    const result = await this.updateCloudDB(
-      (db) => {
-        db.redemptions.forEach(r => removed.add(keyOf(r)));
-        return {
-          data: {
-            redeemedCodes: [],
-            redemptions: [],
-            customCodes: deleteGenerated ? [] : db.customCodes
-          }
-        };
-      },
-      // Applied once none of the redemptions we cleared are still stored
-      // (a brand-new redemption made during the reset is not ours to undo).
-      (db) => !db.redemptions.some(r => removed.has(keyOf(r))) &&
-              (!deleteGenerated || db.customCodes.length === 0)
-    );
-
-    if (!result.ok) {
-      return { success: false, error: this.cloudErrorMessage(result) };
-    }
-
-    this.syncLocalFromCloud(this.normalizeCloudData(result.data));
-    return { success: true };
+    const r = await this.adminCall('/api/admin/reset', { deleteGenerated: !!deleteGenerated });
+    return r.ok ? { success: true, removedDevices: r.body.removedDevices, removedGenerated: r.body.removedGenerated }
+                : { success: false, status: r.status, error: (r.body && r.body.error) || 'Failed.' };
   }
 }
 
@@ -1146,9 +872,9 @@ class AppleMessagesApp {
 
   // --------------------------------------------------------------------------
   // ACCESS WATCH: signs a device out when the admin has removed it.
-  // Re-checks the cloud on load, when the tab becomes visible again and every few
-  // minutes while visible. Kept infrequent on purpose (free public API). Admin
-  // sessions never touch the network here and are never signed out.
+  // Asks the server on load, when the tab becomes visible again and every minute
+  // while visible. Only the server decides: a reset or a removed device is signed
+  // out within a minute, while a signed-in admin stays valid.
   // --------------------------------------------------------------------------
   startAccessWatch() {
     if (!this.accessWatchBound) {
@@ -1161,7 +887,7 @@ class AppleMessagesApp {
     this.verifyAccess(true);
     this.accessWatchTimer = setInterval(() => {
       if (document.visibilityState === 'visible') this.verifyAccess();
-    }, 5 * 60 * 1000);
+    }, 60 * 1000);
   }
 
   stopAccessWatch() {
@@ -1174,7 +900,7 @@ class AppleMessagesApp {
   async verifyAccess(force = false) {
     if (this.accessCheckInFlight) return;
     const now = Date.now();
-    if (!force && now - (this.lastAccessCheck || 0) < 60 * 1000) return;
+    if (!force && now - (this.lastAccessCheck || 0) < 15 * 1000) return;
     this.accessCheckInFlight = true;
     this.lastAccessCheck = now;
     try {
@@ -2500,24 +2226,13 @@ class AppleMessagesApp {
   async renderAdminDashboard() {
     if (!this.elements.adminDashboardView) return;
 
-    // 1. Initial immediate render from local database
-    const localDB = this.authManager.getDatabase();
-    this.updateAdminDashboardUI(localDB.invites || [], localDB.redemptions || [], localDB.adminRedeemed);
-
-    // 2. Fetch live real-time cloud data from all devices worldwide
-    try {
-      const cloudData = await this.authManager.fetchCloudDB();
-      if (cloudData) {
-        const cloud = this.authManager.normalizeCloudData(cloudData);
-
-        // Combine all codes: initial 10 + any admin generated custom codes. The local
-        // cache is refreshed too, so it never shows codes/devices the cloud dropped.
-        const combinedInvites = this.authManager.syncLocalFromCloud(cloud);
-
-        this.updateAdminDashboardUI(combinedInvites, cloud.redemptions, false);
-      }
-    } catch (e) {
-      console.warn('Live cloud dashboard refresh error', e);
+    const state = await this.authManager.fetchAdminState();
+    if (state.success) {
+      this.updateAdminDashboardUI(state.invites, state.redemptions, false);
+    } else if (state.status === 401) {
+      this.lockApp('Admin session expired. Enter the admin code again.');
+    } else {
+      console.warn('Admin dashboard refresh failed', state.error);
     }
   }
 
@@ -2551,9 +2266,7 @@ class AppleMessagesApp {
           card.innerHTML = `
             <div class="admin-item-top">
               <span class="admin-code-pill">${escapeHtml(r.code)}</span>
-              <span class="admin-status-badge ${r.role === 'admin' ? 'available' : 'redeemed'}">
-                ${r.role === 'admin' ? 'Admin Master' : 'VIP Redeemed'}
-              </span>
+              <span class="admin-status-badge redeemed">VIP Redeemed</span>
             </div>
             <div class="admin-item-meta">
               <span class="meta-chip">
@@ -2567,6 +2280,12 @@ class AppleMessagesApp {
               </span>
             </div>
           `;
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'btn-copy-code btn-remove-device';
+          removeBtn.textContent = 'Remove device';
+          removeBtn.addEventListener('click', () => this.handleRemoveDevice(r.code));
+          card.appendChild(removeBtn);
           this.elements.adminRedeemedList.appendChild(card);
         });
       }
@@ -2641,6 +2360,18 @@ class AppleMessagesApp {
     this.renderSidebar();
   }
 
+  // Removes one device: its code becomes unused again and that device is signed out.
+  async handleRemoveDevice(code) {
+    if (!confirm('Remove the device that used ' + code + '? It will be signed out and the code becomes unused again.')) return;
+    const result = await this.authManager.removeDevice(code);
+    if (!result.success) {
+      alert('Could not remove the device: ' + result.error);
+      return;
+    }
+    soundEngine.playTapbackPop();
+    this.renderAdminDashboard();
+  }
+
   async handleResetCodes() {
     const ok = confirm('Reset all invite codes and remove every connected device?\n\nEvery code becomes unused again, the device/IP log is cleared and all non-admin devices are signed out. The admin stays signed in.');
     if (!ok) return;
@@ -2661,7 +2392,7 @@ class AppleMessagesApp {
   }
 
   handleCopyAllUnused() {
-    const invites = this.adminInvitesShown || this.authManager.getDatabase().invites || [];
+    const invites = this.adminInvitesShown || [];
     const available = invites.filter(i => i.status === 'available').map(i => i.code);
     if (available.length === 0) {
       alert('No available invite codes to copy.');

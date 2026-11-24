@@ -2706,3 +2706,13 @@ body.dark-mode .apple-switch .slider {
   color: #FFFFFF;
 }
 
+
+/* Admin: remove a single connected device */
+.btn-remove-device {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  color: #FF453A;
+  background: rgba(255, 69, 58, 0.10);
+  border-color: rgba(255, 69, 58, 0.35);
+}

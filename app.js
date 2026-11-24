@@ -512,6 +512,16 @@ class BiletStorageManager {
 const AVATAR_4000 = './assets/avatar_4000.svg';
 const AVATAR_ADMIN = './assets/avatar_admin.svg';
 
+// Cloud data is world-writable, so anything from it is escaped before it reaches innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ============================================================================
 // 3.5 BILET AUTH & CLOUD DATABASE MANAGER (Real-Time Worldwide Sync & Device Tracking)
 // ============================================================================
@@ -562,29 +572,31 @@ class BiletAuthManager {
     }
   }
 
+  // Returns the raw cloud data object, or null when the server can't be reached.
   async fetchCloudDB() {
     try {
       const controller = new AbortController();
       const tid = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(this.cloudApiUrl, { signal: controller.signal });
+      const res = await fetch(this.cloudApiUrl, { signal: controller.signal, cache: 'no-store' });
       clearTimeout(tid);
       if (res.ok) {
         const json = await res.json();
-        if (json && json.data) {
+        if (json && json.data && typeof json.data === 'object') {
           return json.data;
         }
       }
     } catch (e) {
-      console.warn('Cloud DB fetch failed, falling back to local', e);
+      console.warn('Cloud DB fetch failed', e);
     }
     return null;
   }
 
+  // Returns true only when the server confirmed the write (HTTP 2xx).
   async saveCloudDB(dataObj) {
     try {
       const controller = new AbortController();
       const tid = setTimeout(() => controller.abort(), 4500);
-      await fetch(this.cloudApiUrl, {
+      const res = await fetch(this.cloudApiUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -594,9 +606,64 @@ class BiletAuthManager {
         signal: controller.signal
       });
       clearTimeout(tid);
+      return res.ok;
     } catch (e) {
       console.warn('Cloud DB save failed', e);
+      return false;
     }
+  }
+
+  // Cloud data always read through this so missing/garbled fields never crash a caller.
+  // redeemedCodes is the union of the stored list and the codes found in redemptions.
+  normalizeCloudData(data) {
+    const src = (data && typeof data === 'object') ? data : {};
+    const redemptions = (Array.isArray(src.redemptions) ? src.redemptions : [])
+      .filter(r => r && typeof r === 'object');
+    const stored = Array.isArray(src.redeemedCodes) ? src.redeemedCodes : [];
+    return {
+      redeemedCodes: Array.from(new Set([...stored, ...redemptions.map(r => r.code).filter(Boolean)])),
+      redemptions: redemptions,
+      customCodes: Array.isArray(src.customCodes) ? src.customCodes : []
+    };
+  }
+
+  // Safe read-modify-write against the cloud DB. The server replaces the whole object on
+  // every PUT, so two devices writing at once could silently drop each other's change.
+  //   mutate(db)    -> { data } to write, or { error } to abort with a message
+  //   isApplied(db) -> true when a fresh read-back shows our change is really stored
+  // If the read-back shows we were overwritten, the whole cycle is retried.
+  async updateCloudDB(mutate, isApplied, attempts = 3) {
+    for (let i = 0; i < attempts; i++) {
+      const current = await this.fetchCloudDB();
+      if (!current) return { ok: false, reason: 'unreachable' };
+
+      const outcome = mutate(this.normalizeCloudData(current));
+      if (outcome.error) return { ok: false, reason: 'rejected', error: outcome.error };
+
+      if (!(await this.saveCloudDB(outcome.data))) return { ok: false, reason: 'save-failed' };
+
+      const check = await this.fetchCloudDB();
+      // Write was confirmed by the server; if the read-back itself fails we can't do better.
+      if (!check || isApplied(this.normalizeCloudData(check))) {
+        return { ok: true, data: outcome.data };
+      }
+    }
+    return { ok: false, reason: 'conflict' };
+  }
+
+  cloudErrorMessage(result) {
+    switch (result.reason) {
+      case 'rejected': return result.error;
+      case 'unreachable': return 'Could not reach the server. Please try again.';
+      case 'save-failed': return 'Could not save to the server. Please try again.';
+      default: return 'The server is busy. Please try again.';
+    }
+  }
+
+  makeSessionId() {
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
   }
 
   getDatabase() {
@@ -629,6 +696,52 @@ class BiletAuthManager {
     try {
       localStorage.setItem(this.sessionKey, JSON.stringify(session));
     } catch (e) {}
+  }
+
+  clearSession() {
+    try {
+      localStorage.removeItem(this.sessionKey);
+    } catch (e) {}
+  }
+
+  // Is this device still allowed in? Checked against the cloud, not just local storage.
+  //   'valid'   - admin (never depends on the cloud), or the cloud still lists this device
+  //   'revoked' - no session, or the cloud no longer lists it (reset, forged or pre-update session)
+  //   'unknown' - cloud unreachable; keep the session rather than lock people out on a network blip
+  async validateSession() {
+    const session = this.getSession();
+    if (!session || !session.authenticated) return 'revoked';
+    if (session.role === 'admin') return 'valid';
+
+    const cloud = await this.fetchCloudDB();
+    if (!cloud) return 'unknown';
+
+    const { redemptions } = this.normalizeCloudData(cloud);
+    const listed = !!session.sessionId &&
+      redemptions.some(r => r.sessionId === session.sessionId && r.code === session.code);
+    return listed ? 'valid' : 'revoked';
+  }
+
+  // Rebuild this device's cached copy from a normalized cloud snapshot, so the
+  // admin panel never shows codes/devices the cloud no longer has.
+  syncLocalFromCloud(cloud) {
+    const db = this.getDatabase();
+    const created = new Map((db.invites || []).map(i => [i.code, i.createdAt]));
+    const byCode = new Map(cloud.redemptions.map(r => [r.code, r]));
+    db.invites = [...this.initialCodes, ...cloud.customCodes].map(code => {
+      const r = byCode.get(code);
+      return {
+        code: code,
+        status: cloud.redeemedCodes.includes(code) ? 'redeemed' : 'available',
+        createdAt: created.get(code) || new Date().toISOString(),
+        redeemedAt: r ? r.redeemedAt || null : null,
+        ip: r ? r.ip || null : null,
+        device: r ? r.device || null : null
+      };
+    });
+    db.redemptions = cloud.redemptions;
+    this.saveDatabase(db);
+    return db.invites;
   }
 
   isAuthenticated() {
@@ -747,17 +860,10 @@ class BiletAuthManager {
     const ip = await this.fetchIP();
     const timestamp = new Date().toISOString();
 
-    // 1. Fetch live cloud database state across all devices worldwide
-    const cloudDB = await this.fetchCloudDB();
-    const localDB = this.getDatabase();
-
-    const cloudRedeemedCodes = cloudDB && Array.isArray(cloudDB.redeemedCodes) ? cloudDB.redeemedCodes : [];
-    const cloudRedemptions = cloudDB && Array.isArray(cloudDB.redemptions) ? cloudDB.redemptions : (localDB.redemptions || []);
-    const customCodes = cloudDB && Array.isArray(cloudDB.customCodes) ? cloudDB.customCodes : [];
-
     // =========================================================================
     // ADMIN CODE: works ALWAYS, on ANY device, unlimited times.
-    // No cloud database read/write — it's just compared to this.adminCode.
+    // No cloud database read/write — it's just compared to this.adminCode, so a
+    // reset can never lock the admin out.
     // =========================================================================
     if (code === this.adminCode) {
       this.setSession({
@@ -774,65 +880,58 @@ class BiletAuthManager {
     // =========================================================================
     // REGULAR INVITE CODE VERIFICATION (STRICT SINGLE-USE ACROSS ALL DEVICES)
     // =========================================================================
-    // Without the cloud list we can't know if the code was already used,
-    // and saving would overwrite the redeemed list — so refuse instead.
-    if (!cloudDB) {
-      return { success: false, error: 'Could not reach the server. Please try again.' };
-    }
-
-    const allValidCodes = [...this.initialCodes, ...customCodes];
-    if (!allValidCodes.includes(code)) {
-      return { success: false, error: 'Invalid invite code. Access denied.' };
-    }
-
-    // Check if code was already redeemed on ANY device worldwide
-    if (cloudRedeemedCodes.includes(code)) {
-      return { success: false, error: 'This invite code has already been redeemed.' };
-    }
-
-    // Code is valid and unused: Mark as redeemed in cloud!
+    // Each redemption gets its own sessionId, stored both in the cloud and on this
+    // device. validateSession() later checks the cloud still lists it — that is how
+    // a reset signs this device out, and how a lost write race loses access.
+    const sessionId = this.makeSessionId();
     const newRedemption = {
       code: code,
       role: 'user',
+      sessionId: sessionId,
       redeemedAt: timestamp,
       ip: ip,
       device: device
     };
 
-    const updatedRedeemedCodes = [...cloudRedeemedCodes, code];
-    const updatedRedemptions = [newRedemption, ...cloudRedemptions];
+    const result = await this.updateCloudDB(
+      (db) => {
+        if (![...this.initialCodes, ...db.customCodes].includes(code)) {
+          return { error: 'Invalid invite code. Access denied.' };
+        }
+        // Already redeemed on ANY device worldwide?
+        if (db.redeemedCodes.includes(code)) {
+          return { error: 'This invite code has already been redeemed.' };
+        }
+        return {
+          data: {
+            redeemedCodes: [...db.redeemedCodes, code],
+            redemptions: [newRedemption, ...db.redemptions],
+            customCodes: db.customCodes
+          }
+        };
+      },
+      (db) => db.redemptions.some(r => r.sessionId === sessionId)
+    );
 
-    const updatedCloudData = {
-      redeemedCodes: updatedRedeemedCodes,
-      redemptions: updatedRedemptions,
-      customCodes: customCodes
-    };
-
-    await this.saveCloudDB(updatedCloudData);
-
-    // Save local state
-    const localInvite = localDB.invites.find(i => i.code === code);
-    if (localInvite) {
-      localInvite.status = 'redeemed';
-      localInvite.redeemedAt = timestamp;
-      localInvite.ip = ip;
-      localInvite.device = device;
+    if (!result.ok) {
+      return { success: false, error: this.cloudErrorMessage(result) };
     }
-    localDB.redemptions = [newRedemption, ...localDB.redemptions];
-    this.saveDatabase(localDB);
 
-    const session = {
+    this.syncLocalFromCloud(this.normalizeCloudData(result.data));
+    this.setSession({
       authenticated: true,
       code: code,
       role: 'user',
+      sessionId: sessionId,
       redeemedAt: timestamp,
       ip: ip,
       device: device
-    };
-    this.setSession(session);
+    });
     return { success: true, role: 'user', code: code };
   }
 
+  // Returns { success, codes } or { success: false, error }. Codes only count as
+  // generated once the cloud has confirmed them, so every device recognises them.
   async generateInvites(count) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const newCodes = [];
@@ -848,62 +947,60 @@ class BiletAuthManager {
       newCodes.push(code);
     }
 
-    // Sync new codes to cloud database so all devices recognize them
-    const cloudDB = await this.fetchCloudDB();
-    const existingCustom = cloudDB && Array.isArray(cloudDB.customCodes) ? cloudDB.customCodes : [];
-    const updatedCustom = [...newCodes, ...existingCustom];
+    const result = await this.updateCloudDB(
+      (db) => ({
+        data: {
+          redeemedCodes: db.redeemedCodes,
+          redemptions: db.redemptions,
+          customCodes: [...newCodes, ...db.customCodes]
+        }
+      }),
+      (db) => newCodes.every(c => db.customCodes.includes(c))
+    );
 
-    if (cloudDB) {
-      cloudDB.customCodes = updatedCustom;
-      await this.saveCloudDB(cloudDB);
+    if (!result.ok) {
+      return { success: false, error: this.cloudErrorMessage(result) };
     }
 
-    // Update local database
-    const localDB = this.getDatabase();
-    newCodes.forEach(code => {
-      localDB.invites.unshift({
-        code: code,
-        status: 'available',
-        createdAt: new Date().toISOString(),
-        redeemedAt: null,
-        ip: null,
-        device: null
-      });
-    });
-    this.saveDatabase(localDB);
-
-    return newCodes;
+    this.syncLocalFromCloud(this.normalizeCloudData(result.data));
+    return { success: true, codes: newCodes };
   }
 
-  // RESET: every invite code becomes unused again and the device/IP log is cleared.
+  // RESET: every invite code becomes unused again, the device/IP log is cleared and
+  // every connected non-admin device is signed out the next time it checks in
+  // (its redemption disappears from the cloud, so validateSession() fails).
+  // The admin code and admin sessions are never touched.
   // deleteGenerated = true also removes the codes generated from the Admin Panel
   // (only the 10 initialCodes stay).
+  // Never writes unless the current cloud state was read first, so an outage can't
+  // wipe codes the admin chose to keep.
   async resetCodes(deleteGenerated = false) {
-    const cloudDB = await this.fetchCloudDB();
-    const customCodes = (!deleteGenerated && cloudDB && Array.isArray(cloudDB.customCodes)) ? cloudDB.customCodes : [];
+    const removed = new Set();
+    const keyOf = (r) => r.sessionId || (r.code + '|' + r.redeemedAt);
 
-    await this.saveCloudDB({
-      redeemedCodes: [],
-      redemptions: [],
-      customCodes: customCodes
-    });
+    const result = await this.updateCloudDB(
+      (db) => {
+        db.redemptions.forEach(r => removed.add(keyOf(r)));
+        return {
+          data: {
+            redeemedCodes: [],
+            redemptions: [],
+            customCodes: deleteGenerated ? [] : db.customCodes
+          }
+        };
+      },
+      // Applied once none of the redemptions we cleared are still stored
+      // (a brand-new redemption made during the reset is not ours to undo).
+      (db) => !db.redemptions.some(r => removed.has(keyOf(r))) &&
+              (!deleteGenerated || db.customCodes.length === 0)
+    );
 
-    // Rebuild this device's local copy from scratch
-    try { localStorage.removeItem(this.dbKey); } catch (e) {}
-    this.initDatabase();
-    const localDB = this.getDatabase();
-    customCodes.forEach(code => {
-      localDB.invites.unshift({
-        code: code,
-        status: 'available',
-        createdAt: new Date().toISOString(),
-        redeemedAt: null,
-        ip: null,
-        device: null
-      });
-    });
-    this.saveDatabase(localDB);
-    return true;
+    if (!result.ok) {
+      return { success: false, error: this.cloudErrorMessage(result) };
+    }
+
+    this.syncLocalFromCloud(this.normalizeCloudData(result.data));
+    return { success: true };
   }
 }
 
@@ -1027,6 +1124,7 @@ class AppleMessagesApp {
       if (this.authManager.isAdmin()) {
         this.ensureAdminConversation();
       }
+      this.startAccessWatch();
     } else {
       if (this.elements.privateAccessOverlay) {
         this.elements.privateAccessOverlay.style.display = 'flex';
@@ -1044,6 +1142,71 @@ class AppleMessagesApp {
         }
       }
     }
+  }
+
+  // --------------------------------------------------------------------------
+  // ACCESS WATCH: signs a device out when the admin has removed it.
+  // Re-checks the cloud on load, when the tab becomes visible again and every few
+  // minutes while visible. Kept infrequent on purpose (free public API). Admin
+  // sessions never touch the network here and are never signed out.
+  // --------------------------------------------------------------------------
+  startAccessWatch() {
+    if (!this.accessWatchBound) {
+      this.accessWatchBound = true;
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && this.accessWatchTimer) this.verifyAccess();
+      });
+    }
+    this.stopAccessWatch();
+    this.verifyAccess(true);
+    this.accessWatchTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') this.verifyAccess();
+    }, 5 * 60 * 1000);
+  }
+
+  stopAccessWatch() {
+    if (this.accessWatchTimer) {
+      clearInterval(this.accessWatchTimer);
+      this.accessWatchTimer = null;
+    }
+  }
+
+  async verifyAccess(force = false) {
+    if (this.accessCheckInFlight) return;
+    const now = Date.now();
+    if (!force && now - (this.lastAccessCheck || 0) < 60 * 1000) return;
+    this.accessCheckInFlight = true;
+    this.lastAccessCheck = now;
+    try {
+      const state = await this.authManager.validateSession();
+      if (state === 'revoked') {
+        this.lockApp('Your access was removed. Enter a new invite code to continue.');
+      }
+    } catch (e) {
+      console.warn('Access check failed', e);
+    } finally {
+      this.accessCheckInFlight = false;
+    }
+  }
+
+  lockApp(message) {
+    this.stopAccessWatch();
+    this.authManager.clearSession();
+
+    const overlay = this.elements.privateAccessOverlay;
+    if (overlay) {
+      overlay.classList.remove('fade-out');
+      overlay.style.display = 'flex';
+    }
+    if (this.elements.accessCodeInput) {
+      this.elements.accessCodeInput.value = '';
+      if (this.elements.accessInputCounter) this.elements.accessInputCounter.textContent = '0/10';
+    }
+    if (this.elements.accessErrorMsg && message) {
+      this.elements.accessErrorMsg.textContent = message;
+      this.elements.accessErrorMsg.style.display = 'block';
+    }
+    if (this.activeConvoId === 'admin_panel') this.switchConversation('4000');
   }
 
   ensureAdminConversation() {
@@ -1113,6 +1276,7 @@ class AppleMessagesApp {
         if (result.role === 'admin') {
           this.ensureAdminConversation();
         }
+        this.startAccessWatch();
         this.renderSidebar();
         this.switchConversation('4000');
       } else {
@@ -2344,18 +2508,13 @@ class AppleMessagesApp {
     try {
       const cloudData = await this.authManager.fetchCloudDB();
       if (cloudData) {
-        const cloudRedemptions = Array.isArray(cloudData.redemptions) ? cloudData.redemptions : [];
-        const cloudRedeemedCodes = Array.isArray(cloudData.redeemedCodes) ? cloudData.redeemedCodes : [];
-        const customCodes = Array.isArray(cloudData.customCodes) ? cloudData.customCodes : [];
+        const cloud = this.authManager.normalizeCloudData(cloudData);
 
-        // Combine all codes: initial 10 + any admin generated custom codes
-        const allCodeStrings = [...this.authManager.initialCodes, ...customCodes];
-        const combinedInvites = allCodeStrings.map(c => ({
-          code: c,
-          status: cloudRedeemedCodes.includes(c) ? 'redeemed' : 'available'
-        }));
+        // Combine all codes: initial 10 + any admin generated custom codes. The local
+        // cache is refreshed too, so it never shows codes/devices the cloud dropped.
+        const combinedInvites = this.authManager.syncLocalFromCloud(cloud);
 
-        this.updateAdminDashboardUI(combinedInvites, cloudRedemptions, !!cloudData.adminRedeemed);
+        this.updateAdminDashboardUI(combinedInvites, cloud.redemptions, false);
       }
     } catch (e) {
       console.warn('Live cloud dashboard refresh error', e);
@@ -2363,6 +2522,8 @@ class AppleMessagesApp {
   }
 
   updateAdminDashboardUI(invites, redemptions, isAdminRedeemed) {
+    // Last list shown, so "Copy All" copies what the admin sees (cloud-synced).
+    this.adminInvitesShown = invites;
     const redeemedCount = invites.filter(i => i.status === 'redeemed').length;
     const availableCount = invites.filter(i => i.status === 'available').length;
     const totalCount = invites.length;
@@ -2389,17 +2550,17 @@ class AppleMessagesApp {
 
           card.innerHTML = `
             <div class="admin-item-top">
-              <span class="admin-code-pill">${r.code}</span>
+              <span class="admin-code-pill">${escapeHtml(r.code)}</span>
               <span class="admin-status-badge ${r.role === 'admin' ? 'available' : 'redeemed'}">
                 ${r.role === 'admin' ? 'Admin Master' : 'VIP Redeemed'}
               </span>
             </div>
             <div class="admin-item-meta">
               <span class="meta-chip">
-                📱 <span>${r.device || 'Unknown Device'}</span>
+                📱 <span>${escapeHtml(r.device || 'Unknown Device')}</span>
               </span>
               <span class="meta-chip">
-                🌐 <span>${r.ip || 'Unknown IP'}</span>
+                🌐 <span>${escapeHtml(r.ip || 'Unknown IP')}</span>
               </span>
               <span class="meta-chip">
                 🕒 <span>${dateStr}</span>
@@ -2422,8 +2583,8 @@ class AppleMessagesApp {
           const row = document.createElement('div');
           row.className = 'available-code-row';
           row.innerHTML = `
-            <span class="available-code-text">${inv.code}</span>
-            <button type="button" class="btn-copy-code" data-code="${inv.code}">Copy</button>
+            <span class="available-code-text">${escapeHtml(inv.code)}</span>
+            <button type="button" class="btn-copy-code" data-code="${escapeHtml(inv.code)}">Copy</button>
           `;
           const copyBtn = row.querySelector('.btn-copy-code');
           copyBtn.addEventListener('click', () => {
@@ -2469,7 +2630,11 @@ class AppleMessagesApp {
     const customVal = parseInt(this.elements.customGenerateCount ? this.elements.customGenerateCount.value : '', 10);
     if (!isNaN(customVal) && customVal > 0) count = customVal;
 
-    await this.authManager.generateInvites(count);
+    const result = await this.authManager.generateInvites(count);
+    if (!result.success) {
+      alert('Could not generate invite codes: ' + result.error);
+      return;
+    }
     soundEngine.playReceivedChime();
     this.closeGenerateModal();
     this.renderAdminDashboard();
@@ -2477,13 +2642,17 @@ class AppleMessagesApp {
   }
 
   async handleResetCodes() {
-    const ok = confirm('Reset all invite codes? Every code becomes unused again and the device/IP log is cleared.');
+    const ok = confirm('Reset all invite codes and remove every connected device?\n\nEvery code becomes unused again, the device/IP log is cleared and all non-admin devices are signed out. The admin stays signed in.');
     if (!ok) return;
     const deleteGenerated = confirm('Also DELETE the codes you generated? (OK = delete them, Cancel = keep them as unused)');
     const btn = this.elements.btnResetCodes;
     if (btn) btn.disabled = true;
     try {
-      await this.authManager.resetCodes(deleteGenerated);
+      const result = await this.authManager.resetCodes(deleteGenerated);
+      if (!result.success) {
+        alert('Reset failed, nothing was changed: ' + result.error);
+        return;
+      }
       soundEngine.playReceivedChime();
     } finally {
       if (btn) btn.disabled = false;
@@ -2492,8 +2661,8 @@ class AppleMessagesApp {
   }
 
   handleCopyAllUnused() {
-    const db = this.authManager.getDatabase();
-    const available = (db.invites || []).filter(i => i.status === 'available').map(i => i.code);
+    const invites = this.adminInvitesShown || this.authManager.getDatabase().invites || [];
+    const available = invites.filter(i => i.status === 'available').map(i => i.code);
     if (available.length === 0) {
       alert('No available invite codes to copy.');
       return;
